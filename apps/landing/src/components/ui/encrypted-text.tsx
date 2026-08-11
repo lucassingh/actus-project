@@ -25,9 +25,9 @@ export const EncryptedText = ({
 }: EncryptedTextProps) => {
     const [currentText, setCurrentText] = useState(text);
     const revealedCountRef = useRef(0);
-    const flipIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const revealIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const startTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const flipIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         // Cleanup function
