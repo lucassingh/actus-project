@@ -73,12 +73,12 @@ export async function ensureDbUser(): Promise<DbUser> {
       },
       select: { id: true, role: true, name: true, isActive: true, tenantId: true },
     });
-  } else if (user.role === "OPERATOR" && expectedRole === "SUPERVISOR") {
-    // Fix existing users that were auto-created with wrong role
+  } else if (user.role !== expectedRole) {
+    // Role changed since last sync (e.g. actusAdmin flag added, or org membership changed)
     const tenantId = orgId && !user.tenantId ? await upsertTenant(orgId) : user.tenantId;
     user = await prisma.user.update({
       where: { clerkUserId },
-      data: { role: "SUPERVISOR", tenantId },
+      data: { role: expectedRole, tenantId },
       select: { id: true, role: true, name: true, isActive: true, tenantId: true },
     });
   } else if (orgId && !user.tenantId) {
