@@ -1,0 +1,25 @@
+{
+  "name": "actus-v2",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "db:push": "npm run db:push --workspace=apps/web",
+    "db:studio": "npm run db:studio --workspace=apps/web",
+    "db:migrate": "npm run db:migrate --workspace=apps/web"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "npm@10.9.2",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

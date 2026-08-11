@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "agent-mobile",
+    "slug": "agent-mobile-dev",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon-new.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "agent-mobile",
+    "splash": {
+      "image": "./assets/splash-screen.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0A2463"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.agent.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Necesitamos acceso a la cámara para tomar fotografías de las máquinas.",
+        "NSMicrophoneUsageDescription": "Necesitamos acceso al micrófono para grabar mensajes de audio."
+      },
+      "associatedDomains": [
+        "applinks:app.example.com"
+      ]
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-new.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.agent.mobile",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.example.com",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "agent-mobile"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b4cf0a93-e400-4883-a3b6-52bfb7b62111"
+      }
+    }
+  }
+}

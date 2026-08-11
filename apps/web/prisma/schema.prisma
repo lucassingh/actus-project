@@ -1,0 +1,228 @@
+// Actus V2 — Prisma Schema
+// Database: PostgreSQL on Neon (with pgvector extension)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pgvector(map: "vector")]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TENANT
+// Each industrial company = one Tenant = one Clerk Organization
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id            Int      @id @default(autoincrement())
+  clerkOrgId    String   @unique
+  name          String
+  code          String   @unique
+  contactEmail  String?
+  contactPhone  String?
+  industry      String?
+  employeeCount Int?
+  isActive      Boolean  @default(true)
+  plan          String   @default("basic")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  users            User[]
+  events           Event[]
+  knowledgeBase    KnowledgeBase[]
+  factoryDocs      FactoryDoc[]
+  factoryDocChunks FactoryDocChunk[]
+
+  @@map("tenants")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER
+// Clerk is source of truth for auth. We store business logic fields only.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id          Int      @id @default(autoincrement())
+  clerkUserId String   @unique
+  tenantId    Int?
+  email       String
+  name        String
+  lastname    String
+  role        Role     @default(OPERATOR)
+  isActive    Boolean  @default(true)
+  department  String?
+  deviceType  String?
+  lastLoginAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant         Tenant?  @relation(fields: [tenantId], references: [id])
+  eventsCreated  Event[]  @relation("EventCreator")
+  eventsAssigned Event[]  @relation("EventAssignee")
+
+  @@index([tenantId])
+  @@index([clerkUserId])
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+  OPERATOR
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EVENT
+// Incident / maintenance / control reported by an operator.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Event {
+  id         Int         @id @default(autoincrement())
+  tenantId   Int
+  creatorId  Int
+  assigneeId Int?
+
+  title       String
+  description String?
+  eventType   EventType   @default(INCIDENT)
+  status      EventStatus @default(DRAFT)
+  priority    Priority    @default(MEDIUM)
+
+  problemContent String?
+  contentType    ContentType @default(TEXT)
+  filePaths      Json?
+
+  solution      String?
+  solutionFiles Json?
+
+  conversationHistory Json?
+  aiSuggestions       Json?
+
+  machineName String?
+  location    String?
+  symptoms    String[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+
+  tenant             Tenant         @relation(fields: [tenantId], references: [id])
+  creator            User           @relation("EventCreator", fields: [creatorId], references: [id])
+  assignee           User?          @relation("EventAssignee", fields: [assigneeId], references: [id])
+  knowledgeBaseEntry KnowledgeBase?
+
+  @@index([tenantId])
+  @@index([creatorId])
+  @@index([status])
+  @@map("events")
+}
+
+enum EventType {
+  INCIDENT
+  MAINTENANCE
+  CONTROL
+}
+
+enum EventStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ContentType {
+  TEXT
+  AUDIO
+  IMAGE
+  MIXED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KNOWLEDGE BASE
+// Auto-created when an event is resolved. Used for RAG via pgvector.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model KnowledgeBase {
+  id       Int @id @default(autoincrement())
+  tenantId Int
+  eventId  Int @unique
+
+  problemText      String
+  problemEmbedding Unsupported("vector(1536)")?
+  solutionText     String
+
+  effectivenessScore Int      @default(5)
+  timesReferenced    Int      @default(0)
+  machineName        String?
+  locationName       String?
+  toolsUsed          String[]
+  timeToResolveMin   Int?
+  tags               String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  event  Event  @relation(fields: [eventId], references: [id])
+
+  @@index([tenantId])
+  @@map("knowledge_base")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FACTORY DOC
+// Uploaded manuals/procedures. Ingested into KB (post-MVP).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model FactoryDoc {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  name        String
+  filePath    String   @default("")
+  fileType    String   @default("pdf")
+  fileSize    Int?
+  pageCount   Int?
+  chunkCount  Int      @default(0)
+  isProcessed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id])
+  chunks FactoryDocChunk[]
+
+  @@index([tenantId])
+  @@map("factory_docs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FACTORY DOC CHUNK
+// Each PDF is split into chunks for vector search.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model FactoryDocChunk {
+  id        Int      @id @default(autoincrement())
+  docId     Int
+  tenantId  Int
+  content   String
+  pageNum   Int?
+  chunkIdx  Int
+  embedding Unsupported("vector(1536)")?
+  createdAt DateTime @default(now())
+
+  doc    FactoryDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  tenant Tenant     @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([docId])
+  @@map("factory_doc_chunks")
+}

@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-baloo), ui-sans-serif, system-ui, sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-primary-light: var(--primary-light);
+    --color-primary-dark: var(--primary-dark);
+    --color-secondary-light: var(--secondary-light);
+    --color-secondary-dark: var(--secondary-dark);
+    --color-accent-light: var(--accent-light);
+    --color-accent-dark: var(--accent-dark);
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+    --radius-2xl: calc(var(--radius) + 8px);
+    --radius-3xl: calc(var(--radius) + 12px);
+    --radius-4xl: calc(var(--radius) + 16px);
+}
+
+@keyframes blob {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -50px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+@keyframes border-beam {
+    100% { offset-distance: 100%; }
+}
+
+.animate-border-beam {
+    animation: border-beam calc(var(--duration, 15) * 1s) linear infinite;
+    animation-delay: calc(var(--delay, 0) * 1s);
+}
+
+.border-beam-container::after {
+    content: "";
+    position: absolute;
+    aspect-ratio: 1 / 1;
+    width: calc(var(--size, 300) * 1px);
+    animation: border-beam calc(var(--duration, 15) * 1s) linear infinite;
+    animation-delay: calc(var(--delay, 0) * 1s);
+    background: linear-gradient(to left, var(--color-from, #ffaa40), transparent, transparent);
+    offset-anchor: 50% 50%;
+    offset-path: inset(0 round 10px);
+    z-index: 50;
+}
+
+.animate-blob { animation: blob 7s infinite; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
+
+.no-scrollbar::-webkit-scrollbar { display: none !important; }
+.no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+}
+
+:root {
+    --radius: 0.625rem;
+
+    /* Brand Colors */
+    --primary: #0A2463;
+    --primary-light: #1a3a8a;
+    --primary-dark: #051e41;
+
+    --secondary: #5A6B7C;
+    --secondary-light: #6d7d8d;
+    --secondary-dark: #3d4a56;
+
+    --accent: #F97316;
+    --accent-light: #fb923c;
+    --accent-dark: #d97706;
+
+    /* Backgrounds & Text */
+    --background: #FFFFFF;
+    --background-light: #F5F7FA;
+    --foreground: #1F2937;
+
+    /* Card & Components */
+    --card: #FFFFFF;
+    --card-foreground: #1F2937;
+    --popover: #FFFFFF;
+    --popover-foreground: #1F2937;
+
+    /* UI Elements */
+    --primary-foreground: #FFFFFF;
+    --secondary-foreground: #FFFFFF;
+    --muted: #F5F7FA;
+    --muted-foreground: #6B7280;
+    --accent-foreground: #FFFFFF;
+
+    /* Borders & Input */
+    --border: #E5E7EB;
+    --input: #F5F7FA;
+    --ring: #0A2463;
+
+    /* Semantic */
+    --destructive: #EF4444;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --info: #3B82F6;
+
+    /* Chart */
+    --chart-1: #0A2463;
+    --chart-2: #5A6B7C;
+    --chart-3: #F97316;
+    --chart-4: #10B981;
+    --chart-5: #F59E0B;
+
+    /* Sidebar */
+    --sidebar: #FFFFFF;
+    --sidebar-foreground: #1F2937;
+    --sidebar-primary: #0A2463;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #F97316;
+    --sidebar-accent-foreground: #FFFFFF;
+    --sidebar-border: #E5E7EB;
+    --sidebar-ring: #0A2463;
+
+    /* Dashboard specific */
+    --sidebar-width: 280px;
+    --sidebar-width-collapsed: 72px;
+}
+
+.dark {
+    --background: #1F2937;
+    --background-light: #374151;
+    --foreground: #FFFFFF;
+    --card: #374151;
+    --card-foreground: #FFFFFF;
+    --popover: #374151;
+    --popover-foreground: #FFFFFF;
+    --primary: #1a3a8a;
+    --primary-foreground: #FFFFFF;
+    --secondary: #6d7d8d;
+    --secondary-foreground: #FFFFFF;
+    --muted: #4B5563;
+    --muted-foreground: #D1D5DB;
+    --accent: #fb923c;
+    --accent-foreground: #1F2937;
+    --destructive: #FCA5A5;
+    --border: #4B5563;
+    --input: #4B5563;
+    --ring: #60A5FA;
+    --sidebar: #111827;
+    --sidebar-foreground: #FFFFFF;
+    --sidebar-primary: #1a3a8a;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #fb923c;
+    --sidebar-accent-foreground: #1F2937;
+    --sidebar-border: #4B5563;
+    --sidebar-ring: #60A5FA;
+}
+
+@layer base {
+    html { scroll-behavior: smooth; }
+    * { @apply border-border outline-ring/50; }
+    body { @apply bg-background text-foreground; }
+}
+
+/* Dashboard sidebar transition */
+.sidebar-transition {
+    transition: width 0.3s ease;
+}
