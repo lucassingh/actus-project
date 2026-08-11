@@ -32,7 +32,7 @@ const buildApiUrl = (ip: string, port: string): string => {
 
 export const API_BASE_URL = __DEV__
   ? buildApiUrl(YOUR_LOCAL_IP, API_PORT)
-  : 'https://tu-api-produccion.com/api/v1';
+  : 'https://web-lovat-three-75.vercel.app/api/v1';
 
 // Log de la URL configurada (solo en desarrollo)
 if (__DEV__) {
