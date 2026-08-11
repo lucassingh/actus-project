@@ -62,7 +62,7 @@ export const HeroAnimatedAsset = () => {
     }, [messages, isTyping]);
 
     useEffect(() => {
-        let timeouts: NodeJS.Timeout[] = [];
+        let timeouts: ReturnType<typeof setTimeout>[] = [];
 
         setMessages([]);
         setIsTyping(false);
