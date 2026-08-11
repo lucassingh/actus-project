@@ -1,4 +1,4 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "./prisma";
 import type { Role } from "@prisma/client";
 
@@ -9,29 +9,105 @@ export interface RequestContext {
   role: Role;
 }
 
-/**
- * Resolves the current Clerk session to our DB user + tenant context.
- * Call this at the top of every API route handler.
- * Throws if unauthenticated or user not found in DB.
- */
-export async function getRequestContext(): Promise<RequestContext> {
-  const { userId: clerkUserId } = await auth();
+interface DbUser {
+  id: number;
+  clerkUserId: string;
+  role: Role;
+  name: string;
+  isActive: boolean;
+  tenantId: number | null;
+}
 
+async function upsertTenant(orgId: string): Promise<number> {
+  const client = await clerkClient();
+  const org = await client.organizations.getOrganization({ organizationId: orgId });
+  const tenant = await prisma.tenant.upsert({
+    where: { clerkOrgId: orgId },
+    update: {},
+    create: {
+      clerkOrgId: orgId,
+      name: org.name,
+      code: (org.slug ?? orgId).toUpperCase().slice(0, 20),
+    },
+    select: { id: true },
+  });
+  return tenant.id;
+}
+
+/**
+ * Resolves the current Clerk session to a DB User row, creating (or fixing) it
+ * lazily on first request. Shared by the web dashboard layout AND every API route
+ * (including mobile) so a user's first-ever request — from either surface — bootstraps
+ * their DB record. Previously this only happened in the dashboard layout, which left
+ * mobile-only users (never opened the web dashboard) permanently 401'd.
+ */
+export async function ensureDbUser(): Promise<DbUser> {
+  const { userId: clerkUserId, orgId, orgRole, sessionClaims } = await auth();
   if (!clerkUserId) {
     throw new AuthError("Unauthenticated");
   }
 
-  const user = await prisma.user.findUnique({
+  const isActusAdmin =
+    (sessionClaims?.publicMetadata as Record<string, unknown> | undefined)?.actusAdmin === true;
+  const expectedRole: Role = isActusAdmin ? "ADMIN" : orgRole === "org:member" ? "OPERATOR" : "SUPERVISOR";
+
+  let user = await prisma.user.findUnique({
     where: { clerkUserId },
-    select: { id: true, tenantId: true, role: true },
+    select: { id: true, role: true, name: true, isActive: true, tenantId: true },
   });
 
   if (!user) {
-    throw new AuthError("User not found in database");
+    const clerkUser = await currentUser();
+    if (!clerkUser) throw new AuthError("Unauthenticated");
+
+    const tenantId = orgId ? await upsertTenant(orgId) : null;
+
+    user = await prisma.user.create({
+      data: {
+        clerkUserId,
+        email: clerkUser.emailAddresses[0]?.emailAddress ?? "",
+        name: clerkUser.firstName ?? "",
+        lastname: clerkUser.lastName ?? "",
+        role: expectedRole,
+        tenantId,
+      },
+      select: { id: true, role: true, name: true, isActive: true, tenantId: true },
+    });
+  } else if (user.role === "OPERATOR" && expectedRole === "SUPERVISOR") {
+    // Fix existing users that were auto-created with wrong role
+    const tenantId = orgId && !user.tenantId ? await upsertTenant(orgId) : user.tenantId;
+    user = await prisma.user.update({
+      where: { clerkUserId },
+      data: { role: "SUPERVISOR", tenantId },
+      select: { id: true, role: true, name: true, isActive: true, tenantId: true },
+    });
+  } else if (orgId && !user.tenantId) {
+    // User has correct role but missing tenant link
+    const tenantId = await upsertTenant(orgId);
+    user = await prisma.user.update({
+      where: { clerkUserId },
+      data: { tenantId },
+      select: { id: true, role: true, name: true, isActive: true, tenantId: true },
+    });
+  }
+
+  return { ...user, clerkUserId };
+}
+
+/**
+ * Resolves the current Clerk session to our DB user + tenant context.
+ * Call this at the top of every API route handler.
+ * Throws if unauthenticated or the user is inactive.
+ */
+export async function getRequestContext(): Promise<RequestContext> {
+  const user = await ensureDbUser();
+
+  if (!user.isActive) {
+    throw new AuthError("User is inactive");
   }
 
   return {
-    clerkUserId,
+    clerkUserId: user.clerkUserId,
     userId: user.id,
     tenantId: user.tenantId,
     role: user.role,

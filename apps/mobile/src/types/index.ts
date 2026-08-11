@@ -5,7 +5,8 @@
 // The interfaces below stay local for now — apps/web's @actus/types shapes (EventDetail, AuthMeResponse)
 // don't fully match what these API routes actually return yet (e.g. creator object vs creatorId),
 // so unifying them needs checking the route implementations first rather than guessing here.
-export type { Role, EventType, EventStatus, Priority, ContentType, MessageType } from '@actus/types';
+import type { Role, EventType, EventStatus, Priority, ContentType, MessageType } from '@actus/types';
+export type { Role, EventType, EventStatus, Priority, ContentType, MessageType };
 
 // /api/v1/auth/me response
 export interface User {
