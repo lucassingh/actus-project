@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { generateEmbedding, embeddingToSql } from "@/lib/embeddings";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse");
-
 const CHUNK_WORDS = 350;   // words per chunk
 const CHUNK_OVERLAP = 40;  // words overlap between consecutive chunks
 const MAX_CHUNKS = 80;     // safety cap to avoid embedding API timeouts
@@ -18,6 +15,11 @@ export async function ingestFactoryDocPdf(
   fileBuffer: Buffer,
 ): Promise<{ docId: number; chunksCreated: number; pageCount: number }> {
   // 1. Parse PDF
+  // Required lazily: pdf-parse -> pdfjs-dist tries to set up a canvas backend at
+  // module load time, which crashes Next's static page-data collection (no DOM
+  // globals like DOMMatrix at build time) if required at the top of this file.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pdfParse = require("pdf-parse");
   const parsed = await pdfParse(fileBuffer);
   const rawText: string = parsed.text ?? "";
   const pageCount: number = parsed.numpages ?? 0;
