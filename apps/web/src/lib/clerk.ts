@@ -18,7 +18,7 @@ interface DbUser {
   tenantId: number | null;
 }
 
-async function upsertTenant(orgId: string): Promise<number> {
+export async function upsertTenant(orgId: string): Promise<number> {
   const client = await clerkClient();
   const org = await client.organizations.getOrganization({ organizationId: orgId });
   const tenant = await prisma.tenant.upsert({
