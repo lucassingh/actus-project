@@ -1,6 +1,6 @@
 # CLAUDE.md — apps/web
 
-Next.js 15 app. Serves the supervisor/admin dashboard AND the REST API consumed by the mobile app (actus-app).
+Next.js app — the only app in the monorepo. Serves the public landing (`/`), the supervisor/admin dashboard, the REST API, and the WhatsApp webhook operators use.
 
 See root [`../../CLAUDE.md`](../../CLAUDE.md) for workspace-level methodology and stack.
 
@@ -15,7 +15,7 @@ src/
       v1/
         auth/         # GET /api/v1/auth/me
         events/       # CRUD events
-        agent/        # POST /api/v1/agent/message  ← legacy mobile entry
+        agent/        # POST /api/v1/agent/message  ← former mobile entry, no client today
         whatsapp/     # POST /api/v1/whatsapp/webhook  ← operator's actual entry today
         users/        # User management
         tenants/      # Admin-only tenant management
@@ -24,7 +24,7 @@ src/
     clerk.ts          # Clerk server helpers + getRequestContext()
     transcription.ts  # Whisper audio transcription (Claude has no audio modality)
   services/
-    agent.service.ts          # AgentService — Claude API + RAG (shared by mobile + WhatsApp)
+    agent.service.ts          # AgentService — Claude API + RAG (shared by REST route + WhatsApp)
     whatsapp.service.ts       # Send/receive via Meta Graph API
     knowledge-base.service.ts # pgvector search + KB creation
     event.service.ts
@@ -49,7 +49,7 @@ src/
 ## Scripts
 
 ```bash
-npm run dev              # localhost:3000
+npm run dev              # localhost:3001
 npm run build
 npm run lint
 npm run type-check

@@ -7,8 +7,7 @@ This file provides guidance to Claude Code when working across the full `ACTUS-V
 ```
 ACTUS-V2/
   apps/
-    web/        # Next.js 15 — dashboard (admin/supervisor) + REST API for mobile
-    landing/    # Next.js — marketing landing page
+    web/        # Next.js — public landing (/), dashboard (admin/supervisor), API + WhatsApp webhook
   packages/
     types/      # Shared TypeScript types (events, users, tenants, agent)
   docs/
@@ -16,7 +15,7 @@ ACTUS-V2/
     technical/  # Architecture, flows, API contracts, decisions
 ```
 
-The mobile app (`actus-app/` — Expo React Native) lives in its own repo and consumes the REST API exposed by `apps/web`.
+`apps/web` is the only app. The former Expo mobile app and the standalone `apps/landing` were removed: operators use WhatsApp, and the landing is served by `apps/web` at `/` (redirects to `/dashboard` when signed in).
 
 ---
 
@@ -33,16 +32,16 @@ The mobile app (`actus-app/` — Expo React Native) lives in its own repo and co
 | AI Agent | Anthropic Claude API (claude-haiku for agent, claude-sonnet for complex) |
 | Styling | Tailwind CSS + shadcn/ui |
 | Monorepo | Turborepo |
-| Deployment | Vercel (web + landing) |
+| Deployment | Vercel (single project, root directory `apps/web`) |
 
 ---
 
 ## Architecture overview
 
 ```
-[Operator's WhatsApp]                  [Mobile App — Expo, legacy]
-      │ Meta Cloud API webhook               │ REST (Bearer token via Clerk JWT)
-      ▼                                       ▼
+[Operator's WhatsApp]
+      │ Meta Cloud API webhook
+      ▼
 [apps/web — Next.js API Routes]
       │
       ├─► /api/v1/whatsapp/webhook — HMAC-authenticated, no Clerk session (see below)
@@ -62,13 +61,13 @@ The mobile app (`actus-app/` — Expo React Native) lives in its own repo and co
 
 Operators report incidents via WhatsApp (text/audio/image), not the mobile app — see
 [`docs/technical/08-WHATSAPP-integration.md`](docs/technical/08-WHATSAPP-integration.md).
-Supervisors/admins still use the web dashboard via Clerk, unchanged. The mobile app and
-its `/api/v1/agent/message` + `/api/v1/events/*` routes remain in the codebase but are no
-longer an operator's primary path.
+Supervisors/admins use the web dashboard via Clerk. The mobile app was removed; its REST
+routes (`/api/v1/agent/message`, `/api/v1/auth/me`, `/api/v1/events/*`) remain in the
+codebase but have no client today.
 
 ### Authentication & multi-tenancy
 
-- Clerk handles auth for the dashboard (web) and legacy mobile (JWT verification via Clerk SDK) — **operators no longer have Clerk accounts**, they're identified by `User.phoneNumber` instead (see [`docs/technical/04-ROLES-and-tenancy.md`](docs/technical/04-ROLES-and-tenancy.md))
+- Clerk handles auth for the dashboard (web) and the Bearer-token REST routes (JWT verification via Clerk SDK) — **operators no longer have Clerk accounts**, they're identified by `User.phoneNumber` instead (see [`docs/technical/04-ROLES-and-tenancy.md`](docs/technical/04-ROLES-and-tenancy.md))
 - Each industrial company = one Clerk Organization
 - Roles: `admin` (system), `supervisor` (org admin), `operator` (phone number, WhatsApp)
 - Next.js middleware enforces tenant isolation on every API route, except `/api/v1/whatsapp/webhook` which authenticates via HMAC signature instead of a Clerk session
@@ -76,7 +75,7 @@ longer an operator's primary path.
 ### Agent flow (replaces n8n + Gemini)
 
 ```
-Mobile → POST /api/v1/agent/message
+WhatsApp webhook (or POST /api/v1/agent/message)
   → AgentService.processInput(text | audio | image)
   → KnowledgeBaseService.search(query, tenantId)   // pgvector RAG
   → Claude API (system prompt + KB context + conversation history)
@@ -92,7 +91,6 @@ Mobile → POST /api/v1/agent/message
 | App | CLAUDE.md | Docs index |
 |---|---|---|
 | `apps/web` | [`apps/web/CLAUDE.md`](apps/web/CLAUDE.md) | [`docs/technical/00-INDEX.md`](docs/technical/00-INDEX.md) |
-| `apps/landing` | — | — |
 
 ---
 
@@ -157,7 +155,7 @@ Waiting for "CONTINUAR"...
 When a task is FULLY complete:
 1. Create or update a file in `docs/technical/` following the `NN-TOPIC-about.md` naming convention
 2. Update this `CLAUDE.md` if the architecture changed
-3. If a change affects the mobile API contract, note it in `docs/technical/API-CONTRACTS.md`
+3. If a change affects the REST API contract, note it in `docs/technical/03-API-contracts.md`
 
 ### Restrictions (always apply)
 - **NEVER** modify more than 3 files without a checkpoint
@@ -184,8 +182,8 @@ Do not assume. Do not invent. Ask.
 
 ### Root (monorepo)
 ```bash
-npm run dev          # Start all apps in parallel (Turborepo)
-npm run build        # Build all apps
+npm run dev          # Start apps/web via Turborepo (localhost:3001)
+npm run build        # Build apps/web
 npm run db:push      # Push Prisma schema to Neon (dev)
 npm run db:studio    # Open Prisma Studio
 npm run db:migrate   # Run migrations (prod)
@@ -194,7 +192,7 @@ npm run db:migrate   # Run migrations (prod)
 ### apps/web
 ```bash
 cd apps/web
-npm run dev          # Next.js dev server (localhost:3000)
+npm run dev          # Next.js dev server (localhost:3001)
 npm run build
 npm run lint
 npm run type-check
@@ -208,7 +206,7 @@ npx prisma db push   # Sync schema to Neon
 
 - Agent architecture: [`docs/technical/01-AGENT-architecture.md`](docs/technical/01-AGENT-architecture.md)
 - Data model: [`docs/technical/02-DATA-model.md`](docs/technical/02-DATA-model.md)
-- API contracts (mobile): [`docs/technical/03-API-contracts.md`](docs/technical/03-API-contracts.md)
+- API contracts (REST): [`docs/technical/03-API-contracts.md`](docs/technical/03-API-contracts.md)
 - Multi-tenancy & roles: [`docs/technical/04-ROLES-and-tenancy.md`](docs/technical/04-ROLES-and-tenancy.md)
 - End-to-end testing guide: [`docs/technical/05-TESTING-circuit.md`](docs/technical/05-TESTING-circuit.md)
 - WhatsApp integration: [`docs/technical/08-WHATSAPP-integration.md`](docs/technical/08-WHATSAPP-integration.md)

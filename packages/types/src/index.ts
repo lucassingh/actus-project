@@ -1,5 +1,5 @@
 // Shared TypeScript types for Actus V2
-// Used by: apps/web (API routes) and actus-app (mobile services)
+// Used by: apps/web (API routes, dashboard, WhatsApp webhook)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Enums (mirror Prisma enums — kept in sync manually)
@@ -14,7 +14,7 @@ export type MessageType = "text" | "audio" | "image";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API Request / Response types
-// Used to type fetch() calls in the mobile app and dashboard
+// Used to type REST API responses and dashboard data
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface AuthMeResponse {
