@@ -112,17 +112,29 @@ same API Setup screen. This restriction:
 ## Deploying a webhook code change
 
 Steps 3–6 all live in the same Vercel project as the dashboard
-(`web-lovat-three-75.vercel.app`). After any change to the webhook route or
-`whatsapp.service.ts`:
-```bash
-cd actus
-npx vercel deploy --prod --scope lucas-singhs-projects
-```
-Check delivery with `npx vercel logs https://web-lovat-three-75.vercel.app --scope lucas-singhs-projects` —
+(`actus-project-web`, https://actus-project-web.vercel.app). The project is connected to
+GitHub: every push to `main` deploys to production automatically — no manual
+`vercel deploy` needed.
+
+Check delivery with `npx vercel logs actus-project-web.vercel.app --scope lucas-singhs-projects` —
 a clean run shows two `info`-level `POST /api/v1/whatsapp/webhook` lines (receive + reply);
 an `error`-level line with `[whatsapp.service] sendWhatsAppMessage failed` means the reply
 didn't go out (check the error body — usually either an expired temp token or the sandbox
 allow-list issue above).
+
+## Webhook configuration and the shared test WABA
+
+The Meta app `actus` (app id `1692778191800002`) points its webhook at
+`https://actus-project-web.vercel.app/api/v1/whatsapp/webhook`. It can be read or changed
+without the dashboard, using the app token `<app_id>|<WHATSAPP_APP_SECRET>`:
+`GET/POST https://graph.facebook.com/v21.0/1692778191800002/subscriptions`.
+
+The test WABA (`2059836461282766`, number +1 555 660 8866) is **shared with another app,
+`agrodata-bot`**. Meta delivers every event of a WABA to all subscribed apps, so a message to
+the test number reaches both bots. The webhook ignores any event whose
+`metadata.phone_number_id` isn't `WHATSAPP_PHONE_NUMBER_ID`. That protects production (one
+number per bot); on the shared test number both bots still answer the same message. For
+production, use one WABA + one phone number per bot under the same Business portfolio.
 
 ## Registering an operator
 
@@ -142,3 +154,32 @@ access this page).
   from **2026-10-01** Meta starts charging per service message at the same rate as
   utility/authentication templates for the recipient's country (~USD 0.026/msg in
   Argentina as of this writing — Meta publishes final country rates 2026-09-01).
+
+## PENDING — first end-to-end test with the pilot supervisor (scheduled Saturday 2026-09-26)
+
+Done before that date: production deployed at https://actus-project-web.vercel.app, Meta
+webhook pointed at it and verified, webhook filtered by `phone_number_id`.
+
+Checklist, to be done together with the supervisor (Lucas's friend, pilot contact):
+
+1. [ ] **Admin (Lucas)** → dashboard → Supervisores → Crear → tenant **Essen Pilot** →
+       supervisor's email. He accepts the Clerk invitation and picks his password.
+2. [ ] **Meta (Lucas)** → app `actus` → Casos de uso → Conectar en WhatsApp → Paso 1. Probar →
+       Destinatario → *Administrar lista de números* → add the supervisor's number. The OTP
+       arrives on **his** WhatsApp — he has to read it to Lucas. Lucas's own number is
+       already on the list.
+3. [ ] **Supervisor** → Operadores → Crear → two operators:
+       - himself, with his WhatsApp number (digits only, `549` + area code + number)
+       - Lucas, `5493462565888` (optional)
+       A person can be both supervisor (email/Clerk) and operator (phone): separate `User` rows.
+4. [ ] Both send a WhatsApp to **+1 555 660 8866**, e.g. "Se trabó la cinta 3". Expect the agent's
+       reply within seconds and a new incident in `/dashboard/events` (supervisor view).
+5. [ ] Watch `npx vercel logs actus-project-web.vercel.app --scope lucas-singhs-projects` during the test.
+
+Known risks for that test:
+- **`agrodata-bot` may also reply**, since it shares the test number — ignore it or stop it
+  during the test.
+- **Error `131030`**: Meta stores Lucas's number on the allow-list as `54346215565888` (legacy
+  format with `15`, no `9`), while incoming messages arrive as `549...`. If the reply fails
+  with 131030, the send path needs to normalize Argentine numbers.
+- **Audio** needs OpenAI credit (Whisper). Text and photos work without it.
