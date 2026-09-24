@@ -96,7 +96,7 @@ export function PricingSection() {
                 {/* Boxes animados con color accent */}
                 <div className="absolute inset-0 w-full h-full z-0 opacity-20">
                     <Boxes
-                        boxColor="#F97316" // color accent
+                        boxColor="#EA580E" // color accent
                         background="transparent"
                     />
                 </div>

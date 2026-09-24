@@ -6,9 +6,9 @@
 export const theme = {
   colors: {
     // Primary brand color
-    primary: "#0A2463", // Deep blue
-    primaryLight: "#1a3a8a",
-    primaryDark: "#051e41",
+    primary: "#242F5B", // Deep blue
+    primaryLight: "#34427A",
+    primaryDark: "#161D3A",
 
     // Secondary color
     secondary: "#5A6B7C", // Slate gray
@@ -16,9 +16,9 @@ export const theme = {
     secondaryDark: "#3d4a56",
 
     // Accent color
-    accent: "#F97316", // Amber orange
-    accentLight: "#fb923c",
-    accentDark: "#d97706",
+    accent: "#EA580E", // Amber orange
+    accentLight: "#F07A3A",
+    accentDark: "#C2470B",
 
     // Neutral colors
     white: "#FFFFFF",

@@ -1,35 +1,49 @@
 "use client";
-import React from "react";
-import { FloatingNav } from "../ui/floating-navbar";
-import { Home, MessageCircle, BarChart, DollarSign } from "lucide-react";
+import CardNav, { type CardNavItem } from "@/components/reactbits/CardNav";
+
+const items: CardNavItem[] = [
+  {
+    label: "Producto",
+    bgColor: "#181F3B",
+    textColor: "#E6E8F2",
+    links: [
+      { label: "El desafío", href: "#desafio", ariaLabel: "Ir a El desafío" },
+      { label: "La solución", href: "#solucion", ariaLabel: "Ir a La solución" },
+    ],
+  },
+  {
+    label: "Empresa",
+    bgColor: "#242F5B",
+    textColor: "#FFFFFF",
+    links: [
+      { label: "Preguntas frecuentes", href: "#faq", ariaLabel: "Ir a Preguntas frecuentes" },
+      { label: "Contacto", href: "#contacto", ariaLabel: "Ir a Contacto" },
+    ],
+  },
+  {
+    label: "Cuenta",
+    bgColor: "#EA580E",
+    textColor: "#0A0D1A",
+    links: [
+      { label: "Iniciar sesión", href: "/sign-in", ariaLabel: "Iniciar sesión en Actus" },
+      { label: "Agendar demo", href: "#contacto", ariaLabel: "Agendar una demo" },
+    ],
+  },
+];
 
 export function Navbar() {
-    const navItems = [
-        {
-            name: "Inicio",
-            link: "#home",
-            icon: <Home className="h-4 w-4 text-neutral-500 dark:text-white" />,
-        },
-        {
-            name: "El Desafío",
-            link: "#desafio",
-            icon: <BarChart className="h-4 w-4 text-neutral-500 dark:text-white" />,
-        },
-        {
-            name: "La Solución",
-            link: "#solucion",
-            icon: <DollarSign className="h-4 w-4 text-neutral-500 dark:text-white" />,
-        },
-        {
-            name: "Contacto",
-            link: "#contacto",
-            icon: <MessageCircle className="h-4 w-4 text-neutral-500 dark:text-white" />,
-        }
-    ];
-
-    return (
-        <div className="relative w-full">
-            <FloatingNav navItems={navItems} />
-        </div>
-    );
+  return (
+    <CardNav
+      logo="/logos/logo-bg-black.svg"
+      logoAlt="Actus IA"
+      items={items}
+      ctaLabel="Agendar demo"
+      ctaHref="#contacto"
+      baseColor="rgba(16, 21, 42, 0.92)"
+      menuColor="#E6E8F2"
+      buttonBgColor="#EA580E"
+      buttonTextColor="#0A0D1A"
+      className="[&_nav]:ring-1 [&_nav]:ring-white/10"
+    />
+  );
 }

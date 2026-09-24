@@ -1,78 +1,89 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
 import dynamic from "next/dynamic";
+import { ArrowRight } from "lucide-react";
+import SplitText from "@/components/reactbits/SplitText";
+
+const DotGrid = dynamic(() => import("@/components/reactbits/DotGrid"), { ssr: false });
 
 const HeroAnimatedAsset = dynamic(
   () => import("@/components/animated-assets/HeroAnimatedAsset").then((m) => ({ default: m.HeroAnimatedAsset })),
-  { ssr: false, loading: () => <div className="w-75 h-125" /> }
+  { ssr: false, loading: () => <div className="h-[690px] aspect-[462/944]" /> }
 );
+
+const headlineFrom = { opacity: 0, y: 28 };
+const headlineTo = { opacity: 1, y: 0 };
 
 export function Hero() {
   return (
-    <section id="home" className="min-h-screen w-full relative overflow-hidden flex items-center bg-white pt-24 md:pt-0">
-      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none opacity-20">
-        <div className="absolute top-0 right-0 w-125 h-125 bg-accent/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-125 h-125 bg-primary/5 rounded-full blur-3xl" />
+    <section
+      id="home"
+      className="relative isolate min-h-[100dvh] w-full overflow-hidden bg-ink-950 pt-32 pb-16 lg:pt-24 lg:pb-0 flex items-center"
+    >
+      {/* Precision dot field; brightens toward the brand orange under the pointer */}
+      <div className="absolute inset-0 -z-10 [mask-image:radial-gradient(ellipse_70%_60%_at_60%_45%,black,transparent)]">
+        <DotGrid dotSize={3} gap={22} baseColor="#232B4D" activeColor="#EA580E" proximity={140} />
       </div>
+      <div
+        aria-hidden="true"
+        className="absolute -z-10 right-[-10%] top-1/2 -translate-y-1/2 h-[720px] w-[720px] rounded-full bg-[radial-gradient(circle,rgba(36,47,91,0.55),transparent_65%)]"
+      />
 
-      <div className="relative z-20 max-w-7xl mx-auto w-full px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-5 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
+        <div className="max-w-2xl">
+          <h1 className="font-heading font-black text-ink-100 text-[clamp(2.5rem,5.2vw,4.5rem)] leading-[1.04] tracking-[-0.03em]">
+            <SplitText
+              tag="span"
+              text="El conocimiento de sus técnicos se queda en la planta."
+              splitType="words"
+              delay={45}
+              duration={0.9}
+              ease="expo.out"
+              from={headlineFrom}
+              to={headlineTo}
+              textAlign="left"
+              rootMargin="0px"
+              className="block"
+            />
+            <SplitText
+              tag="span"
+              text="Para siempre."
+              splitType="words"
+              delay={45}
+              duration={0.9}
+              ease="expo.out"
+              from={headlineFrom}
+              to={headlineTo}
+              textAlign="left"
+              rootMargin="0px"
+              className="block text-accent mt-1"
+            />
+          </h1>
 
-        {/* Left Column */}
-        <div className="flex flex-col items-start justify-center text-left order-1 md:order-1">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="mb-6 w-full"
-          >
-            <h1 className="text-4xl md:text-4xl lg:text-5xl font-extrabold font-heading text-primary leading-[1.08] inline">
-              El conocimiento de sus técnicos se queda en la planta.
-            </h1>
-            {" "}
-            <span className="block mt-1 text-4xl md:text-4xl lg:text-5xl font-extrabold font-heading text-accent leading-[1.08] drop-shadow-[0_4px_12px_rgba(249,115,22,0.35)]">
-              Para siempre.
-            </span>
-          </motion.div>
+          <p className="hero-reveal mt-6 max-w-[34rem] text-lg md:text-xl leading-relaxed text-ink-300 [animation-delay:500ms]">
+            Un agente de IA en el WhatsApp de sus técnicos que resuelve fallas y guarda cada solución.
+          </p>
 
-          <motion.p
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-            className="font-normal text-neutral-600 font-sans text-lg md:text-xl leading-relaxed mb-10 max-w-lg"
-          >
-            <span className="text-accent font-bold">Actus IA</span>: La plataforma que convierte la experiencia de su equipo en un activo digital permanente. Documenta, aprende y escala el conocimiento técnico de su fábrica.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6 w-full"
-          >
+          <div className="hero-reveal mt-10 flex flex-wrap items-center gap-x-6 gap-y-4 [animation-delay:650ms]">
             <a
-              href="/sign-in"
-              className="w-full sm:w-auto px-8 py-4 bg-accent text-white rounded-full font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-accent/20 hover:bg-accent-light transition-colors"
+              href="#contacto"
+              className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-ink-950 transition-[transform,background-color] duration-200 ease-[var(--ease-out-expo)] hover:bg-accent-light active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
             >
-              Iniciar sesión <ArrowRight className="w-5 h-5" />
+              Agendar demo
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </a>
-          </motion.div>
+            <a
+              href="#solucion"
+              className="rounded text-base font-medium text-ink-300 underline-offset-4 transition-colors duration-150 hover:text-ink-100 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+            >
+              Ver cómo funciona
+            </a>
+          </div>
         </div>
 
-        {/* Right Column */}
-        <div className="flex justify-center md:justify-end items-center order-2 md:order-2 h-full py-10 w-full">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="relative"
-          >
-            <HeroAnimatedAsset />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-87.5 h-162.5 bg-linear-to-tr from-primary/10 to-accent/10 rounded-full blur-3xl -z-10" />
-          </motion.div>
+        <div className="flex justify-center lg:justify-end [zoom:0.62] sm:[zoom:0.72] lg:[zoom:0.82] 2xl:[zoom:1]">
+          <HeroAnimatedAsset />
         </div>
-
       </div>
     </section>
   );

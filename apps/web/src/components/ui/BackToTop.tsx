@@ -35,7 +35,7 @@ export const BackToTop = () => {
                     initial={{ opacity: 0, scale: 0.8, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                    whileHover={{ scale: 1.1, backgroundColor: "#f97316" }} // Accent orange hover
+                    whileHover={{ scale: 1.1, backgroundColor: "#EA580E" }} // Accent orange hover
                     whileTap={{ scale: 0.9 }}
                     onClick={scrollToTop}
                     className="fixed bottom-[15px] cursor-pointer right-[15px] z-[9999] p-4 bg-accent text-white rounded-full shadow-2xl transition-colors duration-300"

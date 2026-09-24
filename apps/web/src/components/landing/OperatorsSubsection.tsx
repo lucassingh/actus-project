@@ -107,8 +107,8 @@ export function OperatorsSubsection() {
                 duration={4}
                 pathColor={"rgba(249, 115, 22, 0.2)"}
                 pathWidth={4}
-                gradientStartColor={"#f97316"}
-                gradientStopColor={"#fb923c"}
+                gradientStartColor={"#EA580E"}
+                gradientStopColor={"#F07A3A"}
                 startXOffset={0}
                 className="z-0"
             />
@@ -120,8 +120,8 @@ export function OperatorsSubsection() {
                 delay={1.2}
                 pathColor={"rgba(249, 115, 22, 0.2)"}
                 pathWidth={4}
-                gradientStartColor={"#f97316"}
-                gradientStopColor={"#fb923c"}
+                gradientStartColor={"#EA580E"}
+                gradientStopColor={"#F07A3A"}
                 startXOffset={0}
                 className="z-0"
             />
@@ -133,8 +133,8 @@ export function OperatorsSubsection() {
                 delay={2.4}
                 pathColor={"rgba(249, 115, 22, 0.2)"}
                 pathWidth={4}
-                gradientStartColor={"#f97316"}
-                gradientStopColor={"#fb923c"}
+                gradientStartColor={"#EA580E"}
+                gradientStopColor={"#F07A3A"}
                 startXOffset={0}
                 className="z-0"
             />
@@ -148,8 +148,8 @@ export function OperatorsSubsection() {
                 delay={3.5}
                 pathColor={"rgba(249, 115, 22, 0.2)"}
                 pathWidth={4}
-                gradientStartColor={"#f97316"}
-                gradientStopColor={"#fb923c"}
+                gradientStartColor={"#EA580E"}
+                gradientStopColor={"#F07A3A"}
                 className="z-0"
             />
         </section>
