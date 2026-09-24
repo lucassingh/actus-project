@@ -71,7 +71,7 @@ export default async function CreateOperatorPage({
   const { error } = await searchParams;
 
   return (
-    <Page className="max-w-3xl">
+    <Page>
       <PageHeader
         title="Nuevo operador"
         description="No tiene que instalar nada: apenas lo registrás, ya puede escribirle al asistente desde su WhatsApp."

@@ -6,26 +6,59 @@ import { cn } from "@/lib/utils";
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
+// Fluid content: no max width, moderate side gutters. PageHeader bleeds over these gutters.
+const GUTTER = "px-6 lg:px-8 2xl:px-12";
+
 export function Page({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("mx-auto w-full max-w-6xl px-6 py-8 lg:px-10", className)}>{children}</div>;
+  return <div className={cn("w-full pb-10", GUTTER, className)}>{children}</div>;
 }
 
+/**
+ * Navy jumbotron attached to the top bar, present on every screen. Bleeds to the edges of the
+ * content area (negative margins undo Page's gutters) with a 15px radius on the bottom corners.
+ */
 export function PageHeader({
   title,
   description,
   actions,
+  back,
+  meta,
 }: {
   title: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
+  back?: { href: string; label: string };
+  meta?: React.ReactNode;
 }) {
   return (
-    <div className="mb-8 flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-fg">{title}</h1>
-        {description && <p className="mt-1.5 text-sm text-fg-subtle">{description}</p>}
+    <div
+      className={cn(
+        "relative isolate -mx-6 mb-8 overflow-hidden rounded-b-[15px] bg-primary lg:-mx-8 2xl:-mx-12",
+        GUTTER
+      )}
+    >
+      {/* Delicate depth: a soft lighter wash from the top-right, no hard shapes */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 bg-[radial-gradient(120%_140%_at_100%_0%,rgba(255,255,255,0.09),transparent_55%)]"
+      />
+      <div className="flex flex-col gap-5 py-7 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          {back && (
+            <Link
+              href={back.href}
+              className="mb-3 inline-flex items-center gap-1.5 rounded text-[13px] text-white/70 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <span aria-hidden="true">&larr;</span>
+              {back.label}
+            </Link>
+          )}
+          {meta && <div className="mb-3 flex flex-wrap items-center gap-2">{meta}</div>}
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-white">{title}</h1>
+          {description && <p className="mt-1.5 max-w-[75ch] text-sm leading-relaxed text-white/75">{description}</p>}
+        </div>
+        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
   );
 }
@@ -193,6 +226,11 @@ export function Alert({
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 export const buttonStyles = {
+  /** Header CTA on the navy jumbotron. #C94B0B (not the brand #EA580E) keeps white text at 4.7:1. */
+  hero: cn(
+    "inline-flex h-9 items-center justify-center gap-2 rounded-md bg-[#C94B0B] px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-[#B4420A] active:scale-[0.98]",
+    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+  ),
   primary: cn(
     "inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-white transition-[background-color,transform] duration-150 hover:bg-primary-light active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
     focusRing

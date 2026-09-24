@@ -63,7 +63,7 @@ export default async function CreateSupervisorPage({
   const { error } = await searchParams;
 
   return (
-    <Page className="max-w-3xl">
+    <Page>
       <PageHeader
         title="Invitar supervisor"
         description="El supervisor recibe un email, elige su contraseña y después registra a sus operadores."
@@ -104,7 +104,7 @@ export default async function CreateSupervisorPage({
               <input id="email" name="email" type="email" required placeholder="supervisor@empresa.com" className={inputStyles} />
             </Field>
           </div>
-          <CardFooter hint="La invitación le llega por email desde Clerk, el proveedor de acceso.">
+          <CardFooter>
             <Link href="/dashboard/supervisors" className={buttonStyles.secondary}>
               Cancelar
             </Link>

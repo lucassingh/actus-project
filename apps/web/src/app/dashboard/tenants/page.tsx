@@ -32,7 +32,7 @@ export default async function TenantsPage({ searchParams }: { searchParams: Prom
         title="Empresas"
         description={`${tenants.length} empresa${tenants.length !== 1 ? "s" : ""} en la plataforma.`}
         actions={
-          <Link href="/dashboard/tenants/create" className={buttonStyles.primary}>
+          <Link href="/dashboard/tenants/create" className={buttonStyles.hero}>
             <Plus className="h-4 w-4" aria-hidden="true" />
             Nueva empresa
           </Link>

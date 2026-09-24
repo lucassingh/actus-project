@@ -58,7 +58,7 @@ export default async function CreateTenantPage({
   const { error } = await searchParams;
 
   return (
-    <Page className="max-w-3xl">
+    <Page>
       <PageHeader
         title="Nueva empresa"
         description="Cada empresa tiene su propio espacio: supervisores, operadores, documentos y conocimiento."

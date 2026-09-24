@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useClerk } from "@clerk/nextjs";
 import {
   LayoutDashboard,
   Building2,
@@ -14,6 +14,7 @@ import {
   FileText,
   BookOpen,
   LifeBuoy,
+  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
@@ -117,12 +118,7 @@ export function DashboardShell({ user, children }: { user: ShellUser; children: 
           collapsed ? "w-[64px]" : "w-[248px]"
         )}
       >
-        <SidebarContent
-          user={user}
-          pathname={pathname}
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((c) => !c)}
-        />
+        <SidebarContent user={user} pathname={pathname} collapsed={collapsed} />
       </aside>
 
       {/* Mobile drawer */}
@@ -150,6 +146,16 @@ export function DashboardShell({ user, children }: { user: ShellUser; children: 
           >
             <Menu className="h-[18px] w-[18px]" />
           </button>
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
+            aria-expanded={!collapsed}
+            className="-ml-1 hidden h-8 w-8 items-center justify-center rounded-md text-fg-subtle transition-colors duration-150 hover:bg-[#F1F1F4] hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:inline-flex"
+          >
+            {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.75} /> : <PanelLeftClose className="h-[18px] w-[18px]" strokeWidth={1.75} />}
+          </button>
+          <span aria-hidden="true" className="hidden h-5 w-px bg-line lg:block" />
           <Breadcrumb pathname={pathname} />
           <div className="ml-auto flex items-center gap-3">
             <div className="hidden text-right leading-tight sm:block">
@@ -174,13 +180,12 @@ function SidebarContent({
   user,
   pathname,
   collapsed,
-  onToggleCollapse,
 }: {
   user: ShellUser;
   pathname: string;
   collapsed: boolean;
-  onToggleCollapse?: () => void;
 }) {
+  const { signOut } = useClerk();
   const items = NAV_ITEMS.filter((item) => item.roles.includes(user.role));
   const isActive = (path: string) =>
     path === "/dashboard" ? pathname === path : pathname === path || pathname.startsWith(path + "/");
@@ -263,28 +268,33 @@ function SidebarContent({
         </ul>
       </nav>
 
-      <div className={cn("flex shrink-0 border-t border-line p-3", collapsed ? "flex-col items-center gap-1" : "items-center justify-between")}>
+      {/* Footer: 10px below the hairline, sign-out, 10px, support (animated brand gradient), 10px */}
+      <div className={cn("flex shrink-0 flex-col gap-2.5 border-t border-line p-2.5", collapsed && "items-center")}>
+        <button
+          type="button"
+          onClick={() => signOut({ redirectUrl: "/sign-in" })}
+          title={collapsed ? "Cerrar sesión" : undefined}
+          aria-label={collapsed ? "Cerrar sesión" : undefined}
+          className={cn(
+            "inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary text-[13px] font-medium text-white transition-[background-color,transform] duration-150 hover:bg-primary-light active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+            collapsed ? "w-9" : "w-full"
+          )}
+        >
+          <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+          {!collapsed && "Cerrar sesión"}
+        </button>
         <a
           href="mailto:soporte@actus-ia.com"
           title={collapsed ? "Soporte" : undefined}
+          aria-label={collapsed ? "Soporte" : undefined}
           className={cn(
-            "flex h-8 items-center gap-2.5 rounded-md text-[13px] text-fg-muted transition-colors duration-150 hover:bg-[#F6F6F8] hover:text-fg",
-            collapsed ? "w-8 justify-center" : "px-2.5"
+            "support-gradient relative isolate inline-flex h-9 items-center justify-center gap-2 overflow-hidden rounded-md text-[13px] font-medium text-white transition-transform duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+            collapsed ? "w-9" : "w-full"
           )}
         >
-          <LifeBuoy className="h-4 w-4 text-fg-subtle" strokeWidth={1.75} aria-hidden="true" />
+          <LifeBuoy className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
           {!collapsed && "Soporte"}
         </a>
-        {onToggleCollapse && (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            aria-label={collapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-fg-subtle transition-colors duration-150 hover:bg-[#F1F1F4] hover:text-fg"
-          >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" strokeWidth={1.75} /> : <PanelLeftClose className="h-4 w-4" strokeWidth={1.75} />}
-          </button>
-        )}
       </div>
     </>
   );

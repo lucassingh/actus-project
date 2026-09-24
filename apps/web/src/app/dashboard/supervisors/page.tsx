@@ -31,7 +31,7 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
         title="Supervisores"
         description={`${supervisors.length} supervisor${supervisors.length !== 1 ? "es" : ""}. Cada uno administra una empresa.`}
         actions={
-          <Link href="/dashboard/supervisors/create" className={buttonStyles.primary}>
+          <Link href="/dashboard/supervisors/create" className={buttonStyles.hero}>
             <UserPlus className="h-4 w-4" aria-hidden="true" />
             Invitar supervisor
           </Link>

@@ -37,7 +37,7 @@ export default async function OperatorsPage({ searchParams }: { searchParams: Pr
         title="Operadores"
         description={`${operators.length} operador${operators.length !== 1 ? "es" : ""}. Reportan incidentes desde su WhatsApp.`}
         actions={
-          <Link href="/dashboard/operators/create" className={buttonStyles.primary}>
+          <Link href="/dashboard/operators/create" className={buttonStyles.hero}>
             <UserPlus className="h-4 w-4" aria-hidden="true" />
             Nuevo operador
           </Link>

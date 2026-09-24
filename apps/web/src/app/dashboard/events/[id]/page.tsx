@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ArrowLeft, Bot, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Bot, MessageSquare, CheckCircle2 } from "lucide-react";
 import type { ConversationHistory } from "@actus/types";
-import { Page, Card, CardHeader, Badge, EmptyState, Avatar, formatDate } from "@/components/dashboard/ui";
+import { Page, PageHeader, Card, CardHeader, Badge, EmptyState, Avatar, formatDate } from "@/components/dashboard/ui";
 import { EVENT_STATUS, EVENT_PRIORITY, EVENT_TYPE } from "@/components/dashboard/event-meta";
 import { cn } from "@/lib/utils";
 
@@ -52,23 +51,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   return (
     <Page>
-      <Link
-        href="/dashboard/events"
-        className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-fg-subtle transition-colors hover:text-fg"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-        Eventos
-      </Link>
-
-      <div className="mb-8 border-b border-line pb-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={status.tone}>{status.label}</Badge>
-          <Badge tone={priority.tone}>{priority.label}</Badge>
-          <span className="font-mono text-xs text-fg-subtle">#{event.id}</span>
-        </div>
-        <h1 className="mt-3 text-2xl font-semibold tracking-[-0.02em] text-fg">{event.title}</h1>
-        {event.description && <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-fg-muted">{event.description}</p>}
-      </div>
+      <PageHeader
+        back={{ href: "/dashboard/events", label: "Eventos" }}
+        meta={
+          <>
+            <Badge tone={status.tone}>{status.label}</Badge>
+            <Badge tone={priority.tone}>{priority.label}</Badge>
+            <span className="font-mono text-xs text-white/60">#{event.id}</span>
+          </>
+        }
+        title={event.title}
+        description={event.description ?? undefined}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-6">

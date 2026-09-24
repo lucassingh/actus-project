@@ -52,7 +52,7 @@ async function AdminHome({ greeting }: { greeting: string }) {
         title={greeting}
         description="Resumen de la plataforma y de las empresas del piloto."
         actions={
-          <Link href="/dashboard/tenants/create" className={buttonStyles.primary}>
+          <Link href="/dashboard/tenants/create" className={buttonStyles.hero}>
             <Plus className="h-4 w-4" aria-hidden="true" />
             Nueva empresa
           </Link>
@@ -143,7 +143,7 @@ async function SupervisorHome({ greeting, tenantId }: { greeting: string; tenant
         title={greeting}
         description="Lo que está pasando hoy en la planta."
         actions={
-          <Link href="/dashboard/operators/create" className={buttonStyles.primary}>
+          <Link href="/dashboard/operators/create" className={buttonStyles.hero}>
             <Plus className="h-4 w-4" aria-hidden="true" />
             Nuevo operador
           </Link>
