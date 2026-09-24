@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/dashboard/Sidebar";
+import { currentUser } from "@clerk/nextjs/server";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ensureDbUser, AuthError } from "@/lib/clerk";
+import { prisma } from "@/lib/prisma";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let user;
@@ -13,12 +15,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user.isActive) redirect("/sign-in");
 
+  const [clerkUser, tenant] = await Promise.all([
+    currentUser(),
+    user.tenantId ? prisma.tenant.findUnique({ where: { id: user.tenantId }, select: { name: true } }) : null,
+  ]);
+
+  const displayName =
+    clerkUser?.fullName || user.name || clerkUser?.primaryEmailAddress?.emailAddress || "Usuario";
+
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      <Sidebar userRole={user.role} />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+    <DashboardShell
+      user={{
+        role: user.role,
+        displayName,
+        workspace: tenant?.name ?? "Actus",
+      }}
+    >
+      {children}
+    </DashboardShell>
   );
 }

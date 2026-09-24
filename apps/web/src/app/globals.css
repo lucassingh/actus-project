@@ -1,3 +1,5 @@
+/* Clerk components sit in their own layer so Tailwind utilities can override them */
+@layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -37,6 +39,15 @@
     --color-popover: var(--popover);
     --color-card-foreground: var(--card-foreground);
     --color-card: var(--card);
+    /* Dashboard (light, Vercel-like): canvas + hairlines + three text levels.
+       fg-subtle #6B7085 keeps >=4.5:1 on both white and the #F5F5F7 canvas. */
+    --color-canvas: #F5F5F7;
+    --color-line: #E4E4E9;
+    --color-line-subtle: #EFEFF2;
+    --color-fg: #0E1123;
+    --color-fg-muted: #4B5066;
+    --color-fg-subtle: #6B7085;
+
     /* Landing dark theme: near-blacks tinted toward the brand navy (#242F5B, hue ~229) */
     --color-ink-950: #0A0D1A;
     --color-ink-900: #10152A;

@@ -1,7 +1,9 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { UserPlus, Info } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
+import Link from "next/link";
+import { Page, PageHeader, Card, CardHeader, CardFooter, Alert, Field, buttonStyles, inputStyles } from "@/components/dashboard/ui";
 
 async function inviteSupervisor(formData: FormData) {
   "use server";
@@ -61,105 +63,57 @@ export default async function CreateSupervisorPage({
   const { error } = await searchParams;
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div
-          className="rounded-2xl p-6 text-white"
-          style={{ background: "linear-gradient(135deg, var(--primary), var(--secondary))" }}
-        >
-          <h1 className="text-2xl font-bold">Nuevo supervisor</h1>
-          <p className="text-white/80 text-sm mt-1">
-            Enviá una invitación por email para que el supervisor cree su cuenta
-          </p>
-        </div>
-      </div>
+    <Page className="max-w-3xl">
+      <PageHeader
+        title="Invitar supervisor"
+        description="El supervisor recibe un email, elige su contraseña y después registra a sus operadores."
+      />
 
       {tenants.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-5">
-          <p className="text-amber-800 font-semibold text-sm">No hay empresas creadas</p>
-          <p className="text-amber-700 text-sm mt-1">
-            Creá una empresa primero desde{" "}
-            <a href="/dashboard/tenants/create" className="underline font-medium">
-              Empresas → Nueva empresa
-            </a>
-            .
-          </p>
-        </div>
+        <Alert tone="info" icon={Info} title="Primero creá una empresa">
+          Cada supervisor administra una empresa.{" "}
+          <Link href="/dashboard/tenants/create" className="font-medium text-fg underline underline-offset-2">
+            Crear empresa
+          </Link>
+        </Alert>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5">
-          <p className="text-red-700 text-sm">{ERROR_MESSAGES[error] ?? "Error desconocido."}</p>
-        </div>
+        <Alert tone="danger" icon={AlertCircle}>
+          {ERROR_MESSAGES[error] ?? "Error desconocido."}
+        </Alert>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <form action={inviteSupervisor} className="space-y-5">
-          <div>
-            <label htmlFor="tenantId" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Empresa
-            </label>
-            <select
-              id="tenantId"
-              name="tenantId"
-              required
-              disabled={tenants.length === 0}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-40"
-              style={{ "--tw-ring-color": "var(--primary)" } as React.CSSProperties}
-            >
-              <option value="">Seleccioná una empresa</option>
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
+      <Card>
+        <form action={inviteSupervisor}>
+          <CardHeader title="Invitación" />
+          <div className="grid gap-5 px-5 py-5 sm:grid-cols-2">
+            <Field id="tenantId" label="Empresa">
+              <select id="tenantId" name="tenantId" required disabled={tenants.length === 0} defaultValue="" className={inputStyles}>
+                <option value="" disabled>
+                  Seleccioná una empresa
+                </option>
+                {tenants.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field id="email" label="Email">
+              <input id="email" name="email" type="email" required placeholder="supervisor@empresa.com" className={inputStyles} />
+            </Field>
           </div>
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email del supervisor
-            </label>
-            <input
-              id="email"
-              type="email"
-              name="email"
-              required
-              placeholder="supervisor@empresa.com"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-              style={{ "--tw-ring-color": "var(--primary)" } as React.CSSProperties}
-            />
-          </div>
-
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              type="submit"
-              disabled={tenants.length === 0}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ backgroundColor: "var(--primary)" }}
-            >
-              <UserPlus size={16} />
+          <CardFooter hint="La invitación le llega por email desde Clerk, el proveedor de acceso.">
+            <Link href="/dashboard/supervisors" className={buttonStyles.secondary}>
+              Cancelar
+            </Link>
+            <button type="submit" disabled={tenants.length === 0} className={buttonStyles.primary}>
               Enviar invitación
             </button>
-            <a
-              href="/dashboard/supervisors"
-              className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </a>
-          </div>
+          </CardFooter>
         </form>
-      </div>
-
-      <div className="mt-4 flex gap-3 bg-blue-50 border border-blue-100 rounded-2xl p-5">
-        <Info size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="text-blue-800 font-medium text-sm">¿Cómo funciona?</p>
-          <p className="text-blue-700 text-sm mt-1">
-            El supervisor recibe un email para unirse a la organización de esa empresa y elige su
-            propia contraseña al aceptar. Una vez que inicia sesión, puede invitar operadores desde
-            su propio panel.
-          </p>
-        </div>
-      </div>
-    </div>
+      </Card>
+    </Page>
   );
 }

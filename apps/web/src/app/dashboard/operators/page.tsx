@@ -1,9 +1,16 @@
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { UserCircle, Phone, Shield } from "lucide-react";
+import { UserCircle, UserPlus, CheckCircle2 } from "lucide-react";
+import { Page, PageHeader, Card, Badge, EmptyState, Alert, Avatar, buttonStyles, table, formatDate } from "@/components/dashboard/ui";
 
-export default async function OperatorsPage() {
+function formatPhone(phone: string | null) {
+  if (!phone) return "-";
+  return `+${phone}`;
+}
+
+export default async function OperatorsPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
   const { userId: clerkUserId } = await auth();
   if (!clerkUserId) redirect("/sign-in");
 
@@ -13,95 +20,81 @@ export default async function OperatorsPage() {
   });
   if (!user || user.role !== "SUPERVISOR" || !user.tenantId) redirect("/dashboard");
 
+  const { created } = await searchParams;
+
   const operators = await prisma.user.findMany({
     where: { tenantId: user.tenantId, role: "OPERATOR" },
     orderBy: { createdAt: "desc" },
     select: {
       id: true, name: true, lastname: true, phoneNumber: true,
-      isActive: true, department: true, lastLoginAt: true, createdAt: true,
+      isActive: true, department: true, createdAt: true,
     },
   });
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div
-          className="rounded-2xl p-6 text-white"
-          style={{ background: "linear-gradient(135deg, var(--primary), var(--secondary))" }}
-        >
-          <h1 className="text-2xl font-bold">Operadores</h1>
-          <p className="text-white/80 text-sm mt-1">
-            {operators.length} operador{operators.length !== 1 ? "es" : ""} registrados
-          </p>
-        </div>
-      </div>
+    <Page>
+      <PageHeader
+        title="Operadores"
+        description={`${operators.length} operador${operators.length !== 1 ? "es" : ""}. Reportan incidentes desde su WhatsApp.`}
+        actions={
+          <Link href="/dashboard/operators/create" className={buttonStyles.primary}>
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            Nuevo operador
+          </Link>
+        }
+      />
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {created && (
+        <Alert tone="success" icon={CheckCircle2}>
+          Operador registrado. Ya puede escribirle al asistente desde su WhatsApp.
+        </Alert>
+      )}
+
+      <Card>
         {operators.length === 0 ? (
-          <div className="p-12 text-center">
-            <UserCircle size={40} className="mx-auto text-gray-200 mb-3" />
-            <p className="text-gray-500 font-medium">No hay operadores registrados</p>
-            <p className="text-gray-400 text-sm mt-1">Registrá el número de WhatsApp de tu primer operador</p>
-          </div>
+          <EmptyState
+            icon={UserCircle}
+            title="Todavía no hay operadores"
+            description="Registrá el WhatsApp de cada técnico. No tienen que instalar nada: le escriben al asistente y listo."
+            action={<Link href="/dashboard/operators/create" className={buttonStyles.secondary}>Registrar operador</Link>}
+          />
         ) : (
-          <table className="w-full">
-            <thead className="border-b border-gray-100 bg-gray-50">
-              <tr>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Nombre</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">WhatsApp</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Área</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Estado</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Último acceso</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {operators.map((op) => (
-                <tr key={op.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                        style={{ backgroundColor: "var(--primary)" }}
-                      >
-                        {op.name[0]}{op.lastname[0]}
-                      </div>
-                      <span className="font-medium text-gray-900 text-sm">
-                        {op.name} {op.lastname}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-gray-500">
-                    <span className="flex items-center gap-1.5">
-                      <Phone size={12} className="text-gray-300" />
-                      {op.phoneNumber ?? "-"}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-gray-500">
-                    {op.department ?? "-"}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        op.isActive
-                          ? "text-green-700 bg-green-50"
-                          : "text-gray-500 bg-gray-100"
-                      }`}
-                    >
-                      <Shield size={10} />
-                      {op.isActive ? "Activo" : "Inactivo"}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-xs text-gray-400">
-                    {op.lastLoginAt
-                      ? new Date(op.lastLoginAt).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
-                      : "Nunca"}
-                  </td>
+          <div className={table.wrap}>
+            <table className={table.table}>
+              <thead>
+                <tr>
+                  <th className={table.th}>Nombre</th>
+                  <th className={table.th}>WhatsApp</th>
+                  <th className={table.th}>Área</th>
+                  <th className={table.th}>Estado</th>
+                  <th className={table.th}>Alta</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {operators.map((op) => {
+                  const fullName = `${op.name} ${op.lastname}`.trim();
+                  return (
+                    <tr key={op.id} className={table.tr}>
+                      <td className={table.td}>
+                        <div className="flex items-center gap-3">
+                          <Avatar name={fullName} />
+                          <span className="font-medium text-fg">{fullName}</span>
+                        </div>
+                      </td>
+                      <td className={`${table.td} font-mono text-[13px] tabular-nums`}>{formatPhone(op.phoneNumber)}</td>
+                      <td className={table.td}>{op.department ?? "-"}</td>
+                      <td className={table.td}>
+                        <Badge tone={op.isActive ? "success" : "neutral"}>{op.isActive ? "Activo" : "Inactivo"}</Badge>
+                      </td>
+                      <td className={table.td}>{formatDate(op.createdAt)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
-    </div>
+      </Card>
+    </Page>
   );
 }

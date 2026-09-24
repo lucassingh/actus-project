@@ -1,9 +1,12 @@
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { EventCard } from "@/components/dashboard/EventCard";
 import { EventsFilters } from "@/components/dashboard/EventsFilters";
-import { AlertCircle } from "lucide-react";
+import { Inbox, SearchX } from "lucide-react";
+import { Page, PageHeader, Card, EmptyState } from "@/components/dashboard/ui";
+import { cn } from "@/lib/utils";
 import type { EventStatus, Priority, EventType } from "@actus/types";
 
 interface SearchParams {
@@ -28,6 +31,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1", 10));
   const offset = (page - 1) * LIMIT;
+  const filtered = !!(params.status || params.priority || params.eventType);
 
   const where = {
     tenantId: user.tenantId,
@@ -68,64 +72,68 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     resolvedAt: e.resolvedAt?.toISOString() ?? null,
   }));
 
+  const pageHref = (p: number) => {
+    const qs = new URLSearchParams();
+    if (params.status) qs.set("status", params.status);
+    if (params.priority) qs.set("priority", params.priority);
+    if (params.eventType) qs.set("eventType", params.eventType);
+    qs.set("page", String(p));
+    return `?${qs.toString()}`;
+  };
+
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div
-          className="rounded-2xl p-6 text-white"
-          style={{ background: "linear-gradient(135deg, var(--primary), var(--secondary))" }}
-        >
-          <h1 className="text-2xl font-bold">Eventos registrados</h1>
-          <p className="text-white/80 text-sm mt-1">
-            Gestiona y supervisa todos los eventos de tu empresa
-          </p>
-        </div>
-      </div>
+    <Page>
+      <PageHeader
+        title="Eventos"
+        description="Incidentes, mantenimientos y controles reportados por los operadores."
+      />
 
-      <EventsFilters />
+      <Card>
+        <EventsFilters />
 
-      {events.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-          <AlertCircle size={40} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 font-medium">No hay eventos registrados</p>
-          <p className="text-gray-400 text-sm mt-1">
-            {params.status || params.priority ? "Prueba cambiando los filtros" : "Aún no se han registrado eventos"}
-          </p>
-        </div>
-      ) : (
-        <>
-          <p className="text-sm text-gray-500 mb-4">
-            Mostrando {events.length} de {total} eventos
-          </p>
-
-          <div className="space-y-3">
-            {serializedEvents.map((event) => (
-              <EventCard key={event.id} event={event as never} />
-            ))}
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-1 mt-8">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <a
-                  key={p}
-                  href={`?page=${p}${params.status ? `&status=${params.status}` : ""}${params.priority ? `&priority=${params.priority}` : ""}`}
-                  className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-medium transition-colors ${
-                    p === page
-                      ? "text-white"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                  style={p === page ? { backgroundColor: "var(--primary)" } : {}}
-                >
-                  {p}
-                </a>
+        {events.length === 0 ? (
+          filtered ? (
+            <EmptyState icon={SearchX} title="Ningún evento coincide con los filtros" description="Probá con otra combinación o limpiá los filtros." />
+          ) : (
+            <EmptyState
+              icon={Inbox}
+              title="Sin eventos todavía"
+              description="Cuando un operador reporte algo por WhatsApp, el incidente aparece acá con toda la conversación."
+            />
+          )
+        ) : (
+          <>
+            <ul>
+              {serializedEvents.map((event) => (
+                <EventCard key={event.id} event={event as never} />
               ))}
+            </ul>
+
+            <div className="flex items-center justify-between border-t border-line px-5 py-3">
+              <p className="text-[13px] text-fg-subtle">
+                {offset + 1}-{offset + events.length} de {total}
+              </p>
+              {totalPages > 1 && (
+                <nav aria-label="Paginación" className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <Link
+                      key={p}
+                      href={pageHref(p)}
+                      aria-current={p === page ? "page" : undefined}
+                      className={cn(
+                        "inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-[13px] tabular-nums transition-colors duration-150",
+                        p === page ? "border border-line bg-white font-medium text-fg" : "text-fg-subtle hover:bg-[#F1F1F4] hover:text-fg"
+                      )}
+                    >
+                      {p}
+                    </Link>
+                  ))}
+                </nav>
+              )}
             </div>
-          )}
-        </>
-      )}
-    </div>
+          </>
+        )}
+      </Card>
+    </Page>
   );
 }

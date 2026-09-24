@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Building2, CheckCircle, XCircle } from "lucide-react";
+import { Building2, Plus, CheckCircle2 } from "lucide-react";
+import { Page, PageHeader, Card, Badge, EmptyState, Alert, buttonStyles, table, formatDate } from "@/components/dashboard/ui";
 
-export default async function TenantsPage() {
+export default async function TenantsPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
   const { userId: clerkUserId } = await auth();
   if (!clerkUserId) redirect("/sign-in");
 
@@ -12,6 +14,8 @@ export default async function TenantsPage() {
     select: { role: true },
   });
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
+
+  const { created } = await searchParams;
 
   const tenants = await prisma.tenant.findMany({
     orderBy: { createdAt: "desc" },
@@ -23,79 +27,72 @@ export default async function TenantsPage() {
   });
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div
-          className="rounded-2xl p-6 text-white"
-          style={{ background: "linear-gradient(135deg, var(--primary), var(--secondary))" }}
-        >
-          <h1 className="text-2xl font-bold">Empresas</h1>
-          <p className="text-white/80 text-sm mt-1">
-            {tenants.length} empresa{tenants.length !== 1 ? "s" : ""} registradas
-          </p>
-        </div>
-      </div>
+    <Page>
+      <PageHeader
+        title="Empresas"
+        description={`${tenants.length} empresa${tenants.length !== 1 ? "s" : ""} en la plataforma.`}
+        actions={
+          <Link href="/dashboard/tenants/create" className={buttonStyles.primary}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Nueva empresa
+          </Link>
+        }
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {created && (
+        <Alert tone="success" icon={CheckCircle2}>
+          Empresa creada. El siguiente paso es invitar a su supervisor.
+        </Alert>
+      )}
+
+      <Card>
         {tenants.length === 0 ? (
-          <div className="col-span-3 bg-white rounded-2xl border border-gray-100 p-12 text-center">
-            <Building2 size={40} className="mx-auto text-gray-200 mb-3" />
-            <p className="text-gray-500 font-medium">No hay empresas registradas</p>
-          </div>
+          <EmptyState
+            icon={Building2}
+            title="Todavía no hay empresas"
+            description="Cada empresa es un espacio separado con sus supervisores, operadores y conocimiento."
+            action={<Link href="/dashboard/tenants/create" className={buttonStyles.secondary}>Crear la primera</Link>}
+          />
         ) : (
-          tenants.map((tenant) => (
-            <div key={tenant.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-bold text-gray-900">{tenant.name}</h3>
-                  <span className="text-xs text-gray-400 font-mono">{tenant.code}</span>
-                </div>
-                {tenant.isActive ? (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-green-700 bg-green-50">
-                    <CheckCircle size={10} />
-                    Activa
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-gray-500 bg-gray-100">
-                    <XCircle size={10} />
-                    Inactiva
-                  </span>
-                )}
-              </div>
-
-              {tenant.industry && (
-                <p className="text-sm text-gray-500 mb-3">{tenant.industry}</p>
-              )}
-
-              <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100 text-center">
-                <div>
-                  <p className="text-lg font-bold text-gray-900">{tenant._count.users}</p>
-                  <p className="text-xs text-gray-400">Usuarios</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-gray-900">{tenant._count.events}</p>
-                  <p className="text-xs text-gray-400">Eventos</p>
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between">
-                <span
-                  className="text-xs px-2.5 py-1 rounded-full font-medium capitalize"
-                  style={{
-                    color: "var(--primary)",
-                    backgroundColor: "var(--primary)15",
-                  }}
-                >
-                  {tenant.plan}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {new Date(tenant.createdAt).toLocaleDateString("es-ES", { month: "short", year: "numeric" })}
-                </span>
-              </div>
-            </div>
-          ))
+          <div className={table.wrap}>
+            <table className={table.table}>
+              <thead>
+                <tr>
+                  <th className={table.th}>Empresa</th>
+                  <th className={table.th}>Industria</th>
+                  <th className={table.th}>Plan</th>
+                  <th className={table.th}>Usuarios</th>
+                  <th className={table.th}>Eventos</th>
+                  <th className={table.th}>Estado</th>
+                  <th className={table.th}>Alta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenants.map((tenant) => (
+                  <tr key={tenant.id} className={table.tr}>
+                    <td className={table.td}>
+                      <p className="font-medium text-fg">{tenant.name}</p>
+                      <p className="font-mono text-xs text-fg-subtle">{tenant.code}</p>
+                    </td>
+                    <td className={table.td}>{tenant.industry ?? "-"}</td>
+                    <td className={table.td}>
+                      <Badge tone="brand">
+                        <span className="capitalize">{tenant.plan.toLowerCase()}</span>
+                      </Badge>
+                    </td>
+                    <td className={`${table.td} tabular-nums`}>{tenant._count.users}</td>
+                    <td className={`${table.td} tabular-nums`}>{tenant._count.events}</td>
+                    <td className={table.td}>
+                      <Badge tone={tenant.isActive ? "success" : "neutral"}>{tenant.isActive ? "Activa" : "Inactiva"}</Badge>
+                    </td>
+                    <td className={table.td}>{formatDate(tenant.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
-    </div>
+      </Card>
+    </Page>
   );
 }

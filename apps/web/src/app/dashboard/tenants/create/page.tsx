@@ -1,7 +1,9 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Building2, Info } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Page, PageHeader, Card, CardHeader, CardFooter, Alert, Field, buttonStyles, inputStyles } from "@/components/dashboard/ui";
 
 async function createTenant(formData: FormData) {
   "use server";
@@ -56,86 +58,39 @@ export default async function CreateTenantPage({
   const { error } = await searchParams;
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div
-          className="rounded-2xl p-6 text-white"
-          style={{ background: "linear-gradient(135deg, var(--primary), var(--secondary))" }}
-        >
-          <h1 className="text-2xl font-bold">Nueva empresa</h1>
-          <p className="text-white/80 text-sm mt-1">
-            Crea una empresa y su organización de Clerk asociada
-          </p>
-        </div>
-      </div>
+    <Page className="max-w-3xl">
+      <PageHeader
+        title="Nueva empresa"
+        description="Cada empresa tiene su propio espacio: supervisores, operadores, documentos y conocimiento."
+      />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5">
-          <p className="text-red-700 text-sm">{ERROR_MESSAGES[error] ?? "Error desconocido."}</p>
-        </div>
+        <Alert tone="danger" icon={AlertCircle}>
+          {ERROR_MESSAGES[error] ?? "Error desconocido."}
+        </Alert>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <form action={createTenant} className="space-y-5">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Nombre de la empresa
-            </label>
-            <input
-              id="name"
-              type="text"
-              name="name"
-              required
-              placeholder="Fábrica Essen"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-              style={{ "--tw-ring-color": "var(--primary)" } as React.CSSProperties}
-            />
+      <Card>
+        <form action={createTenant}>
+          <CardHeader title="Datos de la empresa" />
+          <div className="grid gap-5 px-5 py-5 sm:grid-cols-2">
+            <Field id="name" label="Nombre">
+              <input id="name" name="name" type="text" required placeholder="Fábrica Essen" className={inputStyles} />
+            </Field>
+            <Field id="industry" label="Industria" optional>
+              <input id="industry" name="industry" type="text" placeholder="Alimenticia" className={inputStyles} />
+            </Field>
           </div>
-
-          <div>
-            <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Industria <span className="text-gray-400 font-normal">(opcional)</span>
-            </label>
-            <input
-              id="industry"
-              type="text"
-              name="industry"
-              placeholder="Alimenticia"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-              style={{ "--tw-ring-color": "var(--primary)" } as React.CSSProperties}
-            />
-          </div>
-
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity"
-              style={{ backgroundColor: "var(--primary)" }}
-            >
-              <Building2 size={16} />
+          <CardFooter hint="Después de crearla, invitá a su supervisor desde Supervisores.">
+            <Link href="/dashboard/tenants" className={buttonStyles.secondary}>
+              Cancelar
+            </Link>
+            <button type="submit" className={buttonStyles.primary}>
               Crear empresa
             </button>
-            <a
-              href="/dashboard/tenants"
-              className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </a>
-          </div>
+          </CardFooter>
         </form>
-      </div>
-
-      <div className="mt-4 flex gap-3 bg-blue-50 border border-blue-100 rounded-2xl p-5">
-        <Info size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="text-blue-800 font-medium text-sm">¿Cómo funciona?</p>
-          <p className="text-blue-700 text-sm mt-1">
-            Crea una Organización de Clerk para esta empresa. Después, invitá un supervisor
-            desde <span className="font-mono text-xs">Supervisores → Nuevo supervisor</span> para
-            que administre esta empresa.
-          </p>
-        </div>
-      </div>
-    </div>
+      </Card>
+    </Page>
   );
 }
