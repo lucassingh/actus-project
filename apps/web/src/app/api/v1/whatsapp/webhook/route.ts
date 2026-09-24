@@ -16,7 +16,10 @@ interface WhatsAppMessage {
 interface WhatsAppWebhookPayload {
   entry?: Array<{
     changes?: Array<{
-      value?: { messages?: WhatsAppMessage[] };
+      value?: {
+        metadata?: { phone_number_id?: string };
+        messages?: WhatsAppMessage[];
+      };
     }>;
   }>;
 }
@@ -46,7 +49,14 @@ export async function POST(request: NextRequest) {
   const payload = JSON.parse(rawBody) as WhatsAppWebhookPayload;
 
   try {
-    const messages = payload.entry?.[0]?.changes?.[0]?.value?.messages ?? [];
+    const value = payload.entry?.[0]?.changes?.[0]?.value;
+    // Every app subscribed to the WhatsApp Business Account gets every number's events —
+    // only handle messages sent to Actus's own number.
+    if (value?.metadata?.phone_number_id !== process.env.WHATSAPP_PHONE_NUMBER_ID) {
+      return NextResponse.json({ received: true });
+    }
+
+    const messages = value?.messages ?? [];
     for (const message of messages) {
       await handleIncomingMessage(message);
     }
