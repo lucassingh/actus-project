@@ -32,9 +32,18 @@ apps/web/src/app/api/v1/whatsapp/webhook/route.ts
              6. sendWhatsAppMessage() — reply via Graph API
 ```
 
-`AgentService.processMessage()` itself does not know or care whether the request came from
-WhatsApp or the (retired) mobile app — the webhook is purely a transport adapter in front of
-the same service used by `/api/v1/agent/message`.
+`AgentService.processMessage()` itself does not know or care about WhatsApp — the webhook is
+purely a transport adapter in front of it. (The mobile app and its `/api/v1/agent/message`
+route were removed; the webhook is now the only caller.)
+
+## Ack first, then process — and dedupe retries
+
+Meta retries any webhook it doesn't get a fast 200 for, and delivers at-least-once anyway.
+Running Claude (and Whisper) before answering made slow replies arrive twice. The route now:
+1. Records each message's `wamid` in `whatsapp_inbound_messages` (primary key) — a
+   redelivered message hits the unique constraint (`P2002`) and is skipped.
+2. Returns 200 immediately and runs steps 2–6 above inside Next's `after()`, which keeps the
+   Vercel function alive until the reply is sent.
 
 ## Auth model change
 
@@ -117,8 +126,9 @@ GitHub: every push to `main` deploys to production automatically — no manual
 `vercel deploy` needed.
 
 Check delivery with `npx vercel logs actus-project-web.vercel.app --scope lucas-singhs-projects` —
-a clean run shows two `info`-level `POST /api/v1/whatsapp/webhook` lines (receive + reply);
-an `error`-level line with `[whatsapp.service] sendWhatsAppMessage failed` means the reply
+a clean run shows `info`-level `POST /api/v1/whatsapp/webhook` lines (the message, plus
+Meta's sent/delivered/read status events, which are ignored); an `error`-level line with
+`[whatsapp.service] sendWhatsAppMessage failed` or `handleIncomingMessage failed` means the reply
 didn't go out (check the error body — usually either an expired temp token or the sandbox
 allow-list issue above).
 

@@ -12,7 +12,7 @@ export default async function DashboardPage() {
 
   const user = await prisma.user.findUnique({
     where: { clerkUserId },
-    select: { id: true, name: true, role: true, tenantId: true },
+    select: { id: true, name: true, email: true, role: true, tenantId: true },
   });
   if (!user) redirect("/sign-in");
 
@@ -68,7 +68,7 @@ export default async function DashboardPage() {
           style={{ background: "linear-gradient(135deg, var(--primary), var(--secondary))" }}
         >
           <h1 className="text-2xl font-bold">
-            Bienvenido, {user.name}
+            Bienvenido, {user.name || user.email}
           </h1>
           <p className="text-white/80 text-sm mt-1">
             {user.role === "ADMIN" ? "Administrador" : user.role === "SUPERVISOR" ? "Supervisor" : "Operador"}

@@ -1,6 +1,6 @@
 # CLAUDE.md — apps/web
 
-Next.js app — the only app in the monorepo. Serves the public landing (`/`), the supervisor/admin dashboard, the REST API, and the WhatsApp webhook operators use.
+Next.js app — the only app in the monorepo. Serves the public landing (`/`), the supervisor/admin dashboard, and the WhatsApp webhook operators use.
 
 See root [`../../CLAUDE.md`](../../CLAUDE.md) for workspace-level methodology and stack.
 
@@ -13,18 +13,13 @@ src/
     dashboard/        # Supervisor and admin pages (Server Components)
     api/
       v1/
-        auth/         # GET /api/v1/auth/me
-        events/       # CRUD events
-        agent/        # POST /api/v1/agent/message  ← former mobile entry, no client today
-        whatsapp/     # POST /api/v1/whatsapp/webhook  ← operator's actual entry today
-        users/        # User management
-        tenants/      # Admin-only tenant management
+        whatsapp/     # POST /api/v1/whatsapp/webhook  ← the only API route (operators)
   lib/
     prisma.ts         # Prisma client singleton
     clerk.ts          # Clerk server helpers + getRequestContext()
     transcription.ts  # Whisper audio transcription (Claude has no audio modality)
   services/
-    agent.service.ts          # AgentService — Claude API + RAG (shared by REST route + WhatsApp)
+    agent.service.ts          # AgentService — Claude API + RAG (called by the WhatsApp webhook)
     whatsapp.service.ts       # Send/receive via Meta Graph API
     knowledge-base.service.ts # pgvector search + KB creation
     event.service.ts
@@ -36,8 +31,8 @@ src/
 ## Adding a new API endpoint
 
 1. Create `src/app/api/v1/[resource]/route.ts`
-2. Call `getRequestContext(request)` from `src/lib/clerk.ts` → `{ userId, tenantId, role }`
-3. All DB queries must include `tenantId` from context — never trust tenantId from request body
+2. Call `ensureDbUser()` from `src/lib/clerk.ts` → `{ id, tenantId, role, isActive }`
+3. All DB queries must include that `tenantId` — never trust tenantId from request body
 4. Return `NextResponse.json(data)` or `NextResponse.json({ error }, { status: N })`
 
 ## Adding a new dashboard page

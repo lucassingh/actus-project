@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { processAgentMessage } from "@/services/agent.service";
@@ -6,6 +6,7 @@ import { sendWhatsAppMessage, downloadWhatsAppMedia } from "@/services/whatsapp.
 import type { AgentMessageRequest, MessageType } from "@actus/types";
 
 interface WhatsAppMessage {
+  id: string;
   from: string;
   type: "text" | "audio" | "image" | string;
   text?: { body: string };
@@ -56,9 +57,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    const messages = value?.messages ?? [];
-    for (const message of messages) {
-      await handleIncomingMessage(message);
+    for (const message of value?.messages ?? []) {
+      if (!(await claimMessage(message.id))) continue;
+
+      // Ack Meta immediately and run the agent after the response: Meta retries any
+      // webhook that isn't answered quickly, which made the operator get duplicate replies.
+      after(async () => {
+        try {
+          await handleIncomingMessage(message);
+        } catch (err) {
+          console.error("[whatsapp webhook] handleIncomingMessage failed", err);
+        }
+      });
     }
   } catch (err) {
     // Never fail this request for Meta — log and ack anyway, or Meta will retry/flag the webhook.
@@ -66,6 +76,17 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+// Records the message id; returns false if it was already seen (a Meta redelivery).
+async function claimMessage(messageId: string): Promise<boolean> {
+  try {
+    await prisma.whatsAppInboundMessage.create({ data: { id: messageId } });
+    return true;
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && err.code === "P2002") return false;
+    throw err;
+  }
 }
 
 function hasValidSignature(rawBody: string, signatureHeader: string | null): boolean {

@@ -44,12 +44,7 @@ ACTUS-V2/
       ▼
 [apps/web — Next.js API Routes]
       │
-      ├─► /api/v1/whatsapp/webhook — HMAC-authenticated, no Clerk session (see below)
-      ├─► /api/v1/auth/*      — Clerk webhook sync + session
-      ├─► /api/v1/events/*    — CRUD events (incidents, maintenance)
-      ├─► /api/v1/agent/*     — AgentService: text/audio/image → Claude → KB
-      ├─► /api/v1/tenants/*   — Admin-only tenant management
-      └─► /api/v1/users/*     — User management within tenant
+      └─► /api/v1/whatsapp/webhook — HMAC-authenticated, no Clerk session (see below)
       │
       ▼
 [Prisma → Neon PostgreSQL + pgvector]
@@ -61,21 +56,21 @@ ACTUS-V2/
 
 Operators report incidents via WhatsApp (text/audio/image), not the mobile app — see
 [`docs/technical/08-WHATSAPP-integration.md`](docs/technical/08-WHATSAPP-integration.md).
-Supervisors/admins use the web dashboard via Clerk. The mobile app was removed; its REST
-routes (`/api/v1/agent/message`, `/api/v1/auth/me`, `/api/v1/events/*`) remain in the
-codebase but have no client today.
+Supervisors/admins use the web dashboard via Clerk. The mobile app and its REST routes
+(`/api/v1/agent/message`, `/api/v1/auth/me`, `/api/v1/events/*`) were removed — the
+WhatsApp webhook is the only API route.
 
 ### Authentication & multi-tenancy
 
-- Clerk handles auth for the dashboard (web) and the Bearer-token REST routes (JWT verification via Clerk SDK) — **operators no longer have Clerk accounts**, they're identified by `User.phoneNumber` instead (see [`docs/technical/04-ROLES-and-tenancy.md`](docs/technical/04-ROLES-and-tenancy.md))
+- Clerk handles auth for the dashboard (web) — **operators no longer have Clerk accounts**, they're identified by `User.phoneNumber` instead (see [`docs/technical/04-ROLES-and-tenancy.md`](docs/technical/04-ROLES-and-tenancy.md))
 - Each industrial company = one Clerk Organization
 - Roles: `admin` (system), `supervisor` (org admin), `operator` (phone number, WhatsApp)
-- Next.js middleware enforces tenant isolation on every API route, except `/api/v1/whatsapp/webhook` which authenticates via HMAC signature instead of a Clerk session
+- Next.js middleware requires a Clerk session everywhere except public pages and `/api/v1/whatsapp/webhook`, which authenticates via HMAC signature instead
 
 ### Agent flow (replaces n8n + Gemini)
 
 ```
-WhatsApp webhook (or POST /api/v1/agent/message)
+WhatsApp webhook → ack Meta, then run after the response
   → AgentService.processInput(text | audio | image)
   → KnowledgeBaseService.search(query, tenantId)   // pgvector RAG
   → Claude API (system prompt + KB context + conversation history)

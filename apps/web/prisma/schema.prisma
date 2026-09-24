@@ -227,3 +227,15 @@ model FactoryDocChunk {
   @@index([docId])
   @@map("factory_doc_chunks")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WHATSAPP INBOUND MESSAGE
+// Meta delivers webhooks at-least-once; the message id (wamid) dedupes retries.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WhatsAppInboundMessage {
+  id         String   @id
+  receivedAt DateTime @default(now())
+
+  @@map("whatsapp_inbound_messages")
+}
