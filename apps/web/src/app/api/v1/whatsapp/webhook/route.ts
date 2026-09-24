@@ -80,13 +80,11 @@ export async function POST(request: NextRequest) {
 
 // Records the message id; returns false if it was already seen (a Meta redelivery).
 async function claimMessage(messageId: string): Promise<boolean> {
-  try {
-    await prisma.whatsAppInboundMessage.create({ data: { id: messageId } });
-    return true;
-  } catch (err) {
-    if (err && typeof err === "object" && "code" in err && err.code === "P2002") return false;
-    throw err;
-  }
+  const { count } = await prisma.whatsAppInboundMessage.createMany({
+    data: [{ id: messageId }],
+    skipDuplicates: true,
+  });
+  return count === 1;
 }
 
 function hasValidSignature(rawBody: string, signatureHeader: string | null): boolean {

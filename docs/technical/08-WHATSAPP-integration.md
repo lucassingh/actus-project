@@ -41,7 +41,7 @@ route were removed; the webhook is now the only caller.)
 Meta retries any webhook it doesn't get a fast 200 for, and delivers at-least-once anyway.
 Running Claude (and Whisper) before answering made slow replies arrive twice. The route now:
 1. Records each message's `wamid` in `whatsapp_inbound_messages` (primary key) — a
-   redelivered message hits the unique constraint (`P2002`) and is skipped.
+   redelivered message is a no-op insert (`createMany` + `skipDuplicates`) and is skipped.
 2. Returns 200 immediately and runs steps 2–6 above inside Next's `after()`, which keeps the
    Vercel function alive until the reply is sent.
 
