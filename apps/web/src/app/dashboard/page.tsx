@@ -6,8 +6,9 @@ import {
   Building2, Users, AlertCircle, Clock, CheckCircle2, BookOpen, UserCircle, FileText, Plus, ArrowRight, Inbox,
 } from "lucide-react";
 import {
-  Page, PageHeader, Card, CardHeader, StatGroup, Stat, Badge, EmptyState, buttonStyles, table, formatDate,
+  Page, PageHeader, Card, CardHeader, StatGroup, Stat, Badge, EmptyState, Avatar, buttonStyles, table, formatDate,
 } from "@/components/dashboard/ui";
+import { getOrgLogos } from "@/lib/org-logos";
 import { EVENT_STATUS, EVENT_PRIORITY } from "@/components/dashboard/event-meta";
 
 export default async function DashboardPage() {
@@ -46,11 +47,12 @@ async function AdminHome({ greeting }: { greeting: string }) {
       orderBy: { createdAt: "desc" },
       take: 5,
       select: {
-        id: true, name: true, code: true, isActive: true, createdAt: true,
+        id: true, name: true, code: true, isActive: true, createdAt: true, clerkOrgId: true,
         _count: { select: { users: true, events: true } },
       },
     }),
   ]);
+  const logos = await getOrgLogos(tenants.map((t) => t.clerkOrgId));
 
   return (
     <Page>
@@ -103,8 +105,13 @@ async function AdminHome({ greeting }: { greeting: string }) {
                 {tenants.map((t) => (
                   <tr key={t.id} className={table.tr}>
                     <td className={table.td}>
-                      <p className="font-medium text-fg">{t.name}</p>
-                      <p className="font-mono text-xs text-fg-subtle">{t.code}</p>
+                      <div className="flex items-center gap-3">
+                        <Avatar name={t.name} src={logos[t.clerkOrgId]} size={32} shape="square" />
+                        <div className="min-w-0">
+                          <p className="font-medium text-fg">{t.name}</p>
+                          <p className="font-mono text-xs text-fg-subtle">{t.code}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className={`${table.td} tabular-nums`}>{t._count.users}</td>
                     <td className={`${table.td} tabular-nums`}>{t._count.events}</td>

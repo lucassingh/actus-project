@@ -90,6 +90,8 @@ export interface ShellUser {
   role: Role;
   displayName: string;
   workspace: string;
+  /** Company logo (Clerk org image) or the Actus isologo for platform admins. */
+  workspaceLogo: string | null;
 }
 
 export function DashboardShell({ user, children }: { user: ShellUser; children: React.ReactNode }) {
@@ -205,9 +207,14 @@ function SidebarContent({
       {!collapsed && (
         <div className="px-3 pt-3">
           <div className="flex items-center gap-2.5 rounded-md border border-line px-2.5 py-2">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary text-[11px] font-semibold text-white">
-              {user.workspace[0]?.toUpperCase() ?? "A"}
-            </span>
+            {user.workspaceLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.workspaceLogo} alt="" className="h-7 w-7 shrink-0 rounded-md border border-line bg-white object-contain p-0.5" />
+            ) : (
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-semibold text-white">
+                {user.workspace[0]?.toUpperCase() ?? "A"}
+              </span>
+            )}
             <div className="min-w-0 leading-tight">
               <p className="truncate text-[13px] font-medium text-fg">{user.workspace}</p>
               <p className="text-[11px] text-fg-subtle">{ROLE_LABELS[user.role]}</p>
@@ -268,8 +275,21 @@ function SidebarContent({
         </ul>
       </nav>
 
-      {/* Footer: sign-out, 10px, hairline, 10px, support (animated brand gradient) */}
+      {/* Footer: support (animated brand gradient), 10px, hairline, 10px, sign-out */}
       <div className={cn("flex shrink-0 flex-col gap-2.5 p-2.5", collapsed && "items-center")}>
+        <a
+          href="mailto:soporte@actus-ia.com"
+          title={collapsed ? "Soporte" : undefined}
+          aria-label={collapsed ? "Soporte" : undefined}
+          className={cn(
+            "support-gradient relative isolate inline-flex h-9 items-center justify-center gap-2 overflow-hidden rounded-md text-[13px] font-medium text-white transition-transform duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+            collapsed ? "w-9" : "w-full"
+          )}
+        >
+          <LifeBuoy className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+          {!collapsed && "Soporte"}
+        </a>
+        <hr className="-mx-2.5 w-[calc(100%+1.25rem)] self-stretch border-line" />
         <button
           type="button"
           onClick={() => signOut({ redirectUrl: "/sign-in" })}
@@ -283,19 +303,6 @@ function SidebarContent({
           <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
           {!collapsed && "Cerrar sesión"}
         </button>
-        <hr className="-mx-2.5 w-[calc(100%+1.25rem)] self-stretch border-line" />
-        <a
-          href="mailto:soporte@actus-ia.com"
-          title={collapsed ? "Soporte" : undefined}
-          aria-label={collapsed ? "Soporte" : undefined}
-          className={cn(
-            "support-gradient relative isolate inline-flex h-9 items-center justify-center gap-2 overflow-hidden rounded-md text-[13px] font-medium text-white transition-transform duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-            collapsed ? "w-9" : "w-full"
-          )}
-        >
-          <LifeBuoy className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-          {!collapsed && "Soporte"}
-        </a>
       </div>
     </>
   );

@@ -79,7 +79,7 @@ export function CardHeader({
   return (
     <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
       <div className="min-w-0">
-        <h2 className="text-sm font-semibold text-fg">{title}</h2>
+        <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-fg">{title}</h2>
         {description && <p className="mt-0.5 text-[13px] text-fg-subtle">{description}</p>}
       </div>
       {actions}
@@ -97,19 +97,10 @@ export function CardFooter({ hint, children }: { hint?: React.ReactNode; childre
   );
 }
 
-// ─── Stats: one bordered strip split by hairlines, not a grid of floating cards ──
+// ─── Stats: a grid of individual KPI cards ───────────────────────────────────
 
 export function StatGroup({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={cn(
-        "grid divide-y divide-line overflow-hidden rounded-lg border border-line bg-white sm:divide-x sm:divide-y-0",
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <div className={cn("grid gap-4", className)}>{children}</div>;
 }
 
 export function Stat({
@@ -149,9 +140,15 @@ export function Stat({
       </div>
     </>
   );
-  const cls = "group block px-5 py-5";
+  const cls = "group block rounded-lg border border-line bg-white px-5 py-5";
   return href ? (
-    <Link href={href} className={cn(cls, "transition-colors duration-150 hover:bg-[#FAFAFB] focus-visible:bg-[#FAFAFB] focus-visible:outline-none")}>
+    <Link
+      href={href}
+      className={cn(
+        cls,
+        "transition-[border-color,box-shadow] duration-150 hover:border-[#D2D2DA] hover:shadow-[0_1px_2px_rgba(14,17,35,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      )}
+    >
       {body}
     </Link>
   ) : (
@@ -296,12 +293,24 @@ export function Field({
 export const table = {
   wrap: "overflow-x-auto",
   table: "w-full min-w-[640px] text-sm",
-  th: "border-b border-line bg-[#FAFAFB] px-5 py-2.5 text-left text-xs font-medium text-fg-subtle",
+  th: "border-b border-line bg-[#F2F2F5] px-5 py-2.5 text-left text-xs font-semibold text-fg-muted first:pl-5 whitespace-nowrap",
   tr: "border-b border-line-subtle last:border-0 transition-colors duration-150 hover:bg-[#FAFAFB]",
   td: "px-5 py-3 text-fg-muted",
 };
 
-export function Avatar({ name, src, size = 28 }: { name: string; src?: string | null; size?: number }) {
+/** Round for people; square (shape="square") for company logos. */
+export function Avatar({
+  name,
+  src,
+  size = 28,
+  shape = "round",
+}: {
+  name: string;
+  src?: string | null;
+  size?: number;
+  shape?: "round" | "square";
+}) {
+  const radius = shape === "square" ? "rounded-md" : "rounded-full";
   const initials = name
     .split(" ")
     .filter(Boolean)
@@ -310,12 +319,12 @@ export function Avatar({ name, src, size = 28 }: { name: string; src?: string | 
     .join("");
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt="" width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />;
+    return <img src={src} alt="" width={size} height={size} className={cn("shrink-0 border border-line bg-white", radius, shape === "square" ? "object-contain p-0.5" : "object-cover")} style={{ width: size, height: size }} />;
   }
   return (
     <span
       aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#EEF0F7] text-[11px] font-semibold text-primary"
+      className={cn("inline-flex shrink-0 items-center justify-center bg-[#EEF0F7] text-[11px] font-semibold text-primary", radius)}
       style={{ width: size, height: size }}
     >
       {initials || "?"}

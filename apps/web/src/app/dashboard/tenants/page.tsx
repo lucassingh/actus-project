@@ -3,9 +3,10 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Building2, Plus, CheckCircle2 } from "lucide-react";
-import { Page, PageHeader, Card, Badge, EmptyState, Alert, buttonStyles, table, formatDate } from "@/components/dashboard/ui";
+import { Page, PageHeader, Card, Badge, EmptyState, Alert, Avatar, buttonStyles, table, formatDate } from "@/components/dashboard/ui";
+import { getOrgLogos } from "@/lib/org-logos";
 
-export default async function TenantsPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
+export default async function TenantsPage({ searchParams }: { searchParams: Promise<{ created?: string; logo?: string }> }) {
   const { userId: clerkUserId } = await auth();
   if (!clerkUserId) redirect("/sign-in");
 
@@ -15,16 +16,17 @@ export default async function TenantsPage({ searchParams }: { searchParams: Prom
   });
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
 
-  const { created } = await searchParams;
+  const { created, logo } = await searchParams;
 
   const tenants = await prisma.tenant.findMany({
     orderBy: { createdAt: "desc" },
     select: {
-      id: true, name: true, code: true, industry: true,
+      id: true, name: true, code: true, industry: true, clerkOrgId: true,
       isActive: true, plan: true, createdAt: true,
       _count: { select: { users: true, events: true } },
     },
   });
+  const logos = await getOrgLogos(tenants.map((t) => t.clerkOrgId));
 
   return (
     <Page>
@@ -42,6 +44,7 @@ export default async function TenantsPage({ searchParams }: { searchParams: Prom
       {created && (
         <Alert tone="success" icon={CheckCircle2}>
           Empresa creada. El siguiente paso es invitar a su supervisor.
+          {logo === "failed" && " El logo no se pudo subir; podés cargarlo después desde Clerk."}
         </Alert>
       )}
 
@@ -71,8 +74,13 @@ export default async function TenantsPage({ searchParams }: { searchParams: Prom
                 {tenants.map((tenant) => (
                   <tr key={tenant.id} className={table.tr}>
                     <td className={table.td}>
-                      <p className="font-medium text-fg">{tenant.name}</p>
-                      <p className="font-mono text-xs text-fg-subtle">{tenant.code}</p>
+                      <div className="flex items-center gap-3">
+                        <Avatar name={tenant.name} src={logos[tenant.clerkOrgId]} size={32} shape="square" />
+                        <div className="min-w-0">
+                          <p className="font-medium text-fg">{tenant.name}</p>
+                          <p className="font-mono text-xs text-fg-subtle">{tenant.code}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className={table.td}>{tenant.industry ?? "-"}</td>
                     <td className={table.td}>
