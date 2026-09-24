@@ -15,7 +15,7 @@ export function Page({ children, className }: { children: React.ReactNode; class
 
 /**
  * Navy jumbotron attached to the top bar, present on every screen. Bleeds to the edges of the
- * content area (negative margins undo Page's gutters) with a 15px radius on the bottom corners.
+ * content area (negative margins undo Page's gutters) with a 20px radius on the bottom corners.
  */
 export function PageHeader({
   title,
@@ -33,7 +33,7 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "relative isolate -mx-6 mb-8 overflow-hidden rounded-b-[15px] bg-primary lg:-mx-8 2xl:-mx-12",
+        "relative isolate -mx-6 mb-8 overflow-hidden rounded-b-[20px] bg-primary lg:-mx-8 2xl:-mx-12",
         GUTTER
       )}
     >
@@ -42,20 +42,20 @@ export function PageHeader({
         aria-hidden="true"
         className="absolute inset-0 -z-10 bg-[radial-gradient(120%_140%_at_100%_0%,rgba(255,255,255,0.09),transparent_55%)]"
       />
-      <div className="flex flex-col gap-5 py-7 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           {back && (
             <Link
               href={back.href}
-              className="mb-3 inline-flex items-center gap-1.5 rounded text-[13px] text-white/70 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="mb-1.5 inline-flex items-center gap-1.5 rounded text-[13px] text-white/70 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               <span aria-hidden="true">&larr;</span>
               {back.label}
             </Link>
           )}
-          {meta && <div className="mb-3 flex flex-wrap items-center gap-2">{meta}</div>}
-          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-white">{title}</h1>
-          {description && <p className="mt-1.5 max-w-[75ch] text-sm leading-relaxed text-white/75">{description}</p>}
+          {meta && <div className="mb-2 flex flex-wrap items-center gap-2">{meta}</div>}
+          <h1 className="text-xl font-semibold tracking-[-0.015em] text-white">{title}</h1>
+          {description && <p className="mt-0.5 max-w-[75ch] text-sm leading-relaxed text-white/75">{description}</p>}
         </div>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>
@@ -118,24 +118,38 @@ export function Stat({
   hint,
   icon: Icon,
   href,
+  tone = "brand",
 }: {
   label: string;
   value: number | string;
   hint?: string;
   icon?: LucideIcon;
   href?: string;
+  tone?: Tone;
 }) {
+  const t = TONES[tone];
   const body = (
     <>
-      <div className="flex items-center gap-2 text-[13px] text-fg-subtle">
-        {Icon && <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />}
-        {label}
+      <div className="flex items-start justify-between gap-3">
+        <p className="pt-1.5 text-sm font-medium text-fg-muted">{label}</p>
+        {Icon && (
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md", t.bg)}>
+            <Icon className={cn("h-[18px] w-[18px]", t.text)} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+        )}
       </div>
-      <p className="mt-2 text-[28px] font-semibold leading-none tracking-[-0.02em] text-fg tabular-nums">{value}</p>
-      {hint && <p className="mt-2 text-xs text-fg-subtle">{hint}</p>}
+      <p className="mt-3 text-4xl font-semibold leading-none tracking-[-0.03em] text-fg tabular-nums">{value}</p>
+      <div className="mt-3 flex min-h-5 items-center justify-between gap-3 text-xs text-fg-subtle">
+        <span>{hint}</span>
+        {href && (
+          <span className="inline-flex items-center gap-1 font-medium text-fg-muted transition-transform duration-150 group-hover:translate-x-0.5">
+            Ver <span aria-hidden="true">&rarr;</span>
+          </span>
+        )}
+      </div>
     </>
   );
-  const cls = "block px-5 py-4";
+  const cls = "group block px-5 py-5";
   return href ? (
     <Link href={href} className={cn(cls, "transition-colors duration-150 hover:bg-[#FAFAFB] focus-visible:bg-[#FAFAFB] focus-visible:outline-none")}>
       {body}

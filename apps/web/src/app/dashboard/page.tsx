@@ -23,12 +23,18 @@ export default async function DashboardPage() {
   ]);
   if (!user) redirect("/sign-in");
 
-  const firstName = clerkUser?.firstName || user.name || null;
+  const firstName = clerkUser?.firstName || user.name || nameFromEmail(user.email);
   const greeting = firstName ? `Hola, ${firstName}` : "Hola";
 
   if (user.role === "ADMIN") return <AdminHome greeting={greeting} />;
   if (user.role === "SUPERVISOR" && user.tenantId) return <SupervisorHome greeting={greeting} tenantId={user.tenantId} />;
   redirect("/sign-in");
+}
+
+// "lucas.singh10@gmail.com" -> "Lucas": a readable fallback when Clerk has no first name.
+function nameFromEmail(email: string) {
+  const first = email.split("@")[0]?.split(/[._-]/)[0]?.replace(/\d+$/, "");
+  return first ? first.charAt(0).toUpperCase() + first.slice(1) : null;
 }
 
 async function AdminHome({ greeting }: { greeting: string }) {
@@ -60,9 +66,9 @@ async function AdminHome({ greeting }: { greeting: string }) {
       />
 
       <StatGroup className="sm:grid-cols-3">
-        <Stat label="Empresas activas" value={tenantsCount} icon={Building2} href="/dashboard/tenants" />
-        <Stat label="Supervisores activos" value={supervisorsCount} icon={Users} href="/dashboard/supervisors" />
-        <Stat label="Operadores registrados" value={operatorsCount} icon={UserCircle} hint="En todas las empresas" />
+        <Stat label="Empresas activas" value={tenantsCount} icon={Building2} tone="brand" hint="En la plataforma" href="/dashboard/tenants" />
+        <Stat label="Supervisores activos" value={supervisorsCount} icon={Users} tone="info" hint="Uno por empresa" href="/dashboard/supervisors" />
+        <Stat label="Operadores registrados" value={operatorsCount} icon={UserCircle} tone="accent" hint="En todas las empresas" />
       </StatGroup>
 
       <Card className="mt-6">
@@ -151,10 +157,10 @@ async function SupervisorHome({ greeting, tenantId }: { greeting: string; tenant
       />
 
       <StatGroup className="sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Abiertos" value={count("OPEN")} icon={AlertCircle} hint="Esperando atención" href="/dashboard/events?status=OPEN" />
-        <Stat label="En progreso" value={count("IN_PROGRESS")} icon={Clock} hint="Siendo atendidos" href="/dashboard/events?status=IN_PROGRESS" />
-        <Stat label="Resueltos" value={count("RESOLVED")} icon={CheckCircle2} hint="Con solución confirmada" href="/dashboard/events?status=RESOLVED" />
-        <Stat label="Eventos totales" value={total} icon={Inbox} href="/dashboard/events" />
+        <Stat label="Abiertos" value={count("OPEN")} icon={AlertCircle} tone="accent" hint="Esperando atención" href="/dashboard/events?status=OPEN" />
+        <Stat label="En progreso" value={count("IN_PROGRESS")} icon={Clock} tone="info" hint="Siendo atendidos" href="/dashboard/events?status=IN_PROGRESS" />
+        <Stat label="Resueltos" value={count("RESOLVED")} icon={CheckCircle2} tone="success" hint="Con solución confirmada" href="/dashboard/events?status=RESOLVED" />
+        <Stat label="Eventos totales" value={total} icon={Inbox} tone="brand" hint="Desde el inicio" href="/dashboard/events" />
       </StatGroup>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">

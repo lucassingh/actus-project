@@ -268,8 +268,8 @@ function SidebarContent({
         </ul>
       </nav>
 
-      {/* Footer: 10px below the hairline, sign-out, 10px, support (animated brand gradient), 10px */}
-      <div className={cn("flex shrink-0 flex-col gap-2.5 border-t border-line p-2.5", collapsed && "items-center")}>
+      {/* Footer: sign-out, 10px, hairline, 10px, support (animated brand gradient) */}
+      <div className={cn("flex shrink-0 flex-col gap-2.5 p-2.5", collapsed && "items-center")}>
         <button
           type="button"
           onClick={() => signOut({ redirectUrl: "/sign-in" })}
@@ -283,6 +283,7 @@ function SidebarContent({
           <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
           {!collapsed && "Cerrar sesión"}
         </button>
+        <hr className="-mx-2.5 w-[calc(100%+1.25rem)] self-stretch border-line" />
         <a
           href="mailto:soporte@actus-ia.com"
           title={collapsed ? "Soporte" : undefined}
