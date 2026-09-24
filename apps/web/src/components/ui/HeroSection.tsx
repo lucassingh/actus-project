@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { BackgroundRippleEffect } from "@/components/ui/background-ripple-effect";
 import { ReactNode } from "react";
 
 interface HeroSectionProps {
@@ -25,27 +24,17 @@ interface HeroSectionProps {
 export function HeroSection({
     id = "solution",
     bgColor = "bg-slate-950",
-    bgOpacity = 90,
     titleColor = "text-white",
     subtitleColor = "text-slate-300",
     title,
     subtitle,
     smallTitle = "Solución Inteligente",
-    rippleColor = "bg-white/5",
     className = ""
 }: HeroSectionProps) {
-
-    const bgOpacityClass = `opacity-${bgOpacity}`;
-
     return (
         <section className={`w-full flex flex-col items-center px-5 ${className}`} id={id}>
             {/* Hero Card */}
             <div className={`relative w-full min-h-[50vh] md:h-[60vh] rounded-[10px] overflow-hidden ${bgColor} border shadow-2xl mt-20 mb-32 py-12`}>
-                <BackgroundRippleEffect
-                    className={`absolute inset-0 ${bgOpacityClass}`}
-                    cellClassName={rippleColor}
-                />
-
                 <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4 md:px-20">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}

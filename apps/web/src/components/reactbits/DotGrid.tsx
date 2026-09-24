@@ -1,6 +1,7 @@
 'use client';
 // Adapted from React Bits (DotGrid, TS + Tailwind). Changes: decorative-only wrapper (aria-hidden div),
-// render loop paused off-screen, static frame under prefers-reduced-motion, no click shockwave,
+// draws on demand (only while the pointer or a dot is moving, never off-screen), resting dots
+// batched into one fill, static frame under prefers-reduced-motion, no click shockwave,
 // expo ease-out instead of elastic.
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { gsap } from 'gsap';
@@ -131,25 +132,30 @@ const DotGrid: React.FC<DotGridProps> = ({
     dotsRef.current = dots;
   }, [dotSize, gap]);
 
+  // Draw on demand: the loop only runs while the pointer (or a dot's inertia) is moving,
+  // so an idle hero costs nothing per frame.
+  const activeUntilRef = useRef(0);
+  const requestDrawRef = useRef<(keepAliveMs?: number) => void>(() => {});
+
   useEffect(() => {
     if (!circlePath) return;
 
-    let rafId: number;
+    let rafId = 0;
+    let running = false;
     const proxSq = proximity * proximity;
+    const radius = dotSize / 2;
 
-    const draw = () => {
+    const paint = () => {
       const canvas = canvasRef.current;
-      if (!canvas) return;
-      if (!visibleRef.current) {
-        rafId = requestAnimationFrame(draw);
-        return;
-      }
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const { x: px, y: py } = pointerRef.current;
 
+      // All resting dots share one path and one fill call; only dots near the pointer get their own color.
+      ctx.beginPath();
+      const highlighted: [number, number, string][] = [];
       for (const dot of dotsRef.current) {
         const ox = dot.cx + dot.xOffset;
         const oy = dot.cy + dot.yOffset;
@@ -157,25 +163,41 @@ const DotGrid: React.FC<DotGridProps> = ({
         const dy = dot.cy - py;
         const dsq = dx * dx + dy * dy;
 
-        let style = baseColor;
         if (dsq <= proxSq) {
-          const dist = Math.sqrt(dsq);
-          const t = 1 - dist / proximity;
+          const t = 1 - Math.sqrt(dsq) / proximity;
           const r = Math.round(baseRgb.r + (activeRgb.r - baseRgb.r) * t);
           const g = Math.round(baseRgb.g + (activeRgb.g - baseRgb.g) * t);
           const b = Math.round(baseRgb.b + (activeRgb.b - baseRgb.b) * t);
-          style = `rgb(${r},${g},${b})`;
+          highlighted.push([ox, oy, `rgb(${r},${g},${b})`]);
+        } else {
+          ctx.moveTo(ox + radius, oy);
+          ctx.arc(ox, oy, radius, 0, Math.PI * 2);
         }
-
-        ctx.save();
-        ctx.translate(ox, oy);
-        ctx.fillStyle = style;
-        ctx.fill(circlePath);
-        ctx.restore();
       }
+      ctx.fillStyle = baseColor;
+      ctx.fill();
+      for (const [x, y, style] of highlighted) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = style;
+        ctx.fill();
+      }
+    };
 
-      if (reducedMotionRef.current) return;
-      rafId = requestAnimationFrame(draw);
+    const loop = () => {
+      paint();
+      if (visibleRef.current && performance.now() < activeUntilRef.current) {
+        rafId = requestAnimationFrame(loop);
+      } else {
+        running = false;
+      }
+    };
+
+    requestDrawRef.current = (keepAliveMs = 0) => {
+      activeUntilRef.current = Math.max(activeUntilRef.current, performance.now() + keepAliveMs);
+      if (running) return;
+      running = true;
+      rafId = requestAnimationFrame(loop);
     };
 
     reducedMotionRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -183,15 +205,16 @@ const DotGrid: React.FC<DotGridProps> = ({
       visibleRef.current = entry.isIntersecting;
     });
     if (wrapperRef.current) io.observe(wrapperRef.current);
-    draw();
+    requestDrawRef.current();
     return () => {
       cancelAnimationFrame(rafId);
       io.disconnect();
     };
-  }, [proximity, baseColor, activeRgb, baseRgb, circlePath]);
+  }, [proximity, baseColor, activeRgb, baseRgb, circlePath, dotSize]);
 
   useEffect(() => {
     buildGrid();
+    requestDrawRef.current();
     let ro: ResizeObserver | null = null;
     if ('ResizeObserver' in window) {
       ro = new ResizeObserver(buildGrid);
@@ -208,6 +231,7 @@ const DotGrid: React.FC<DotGridProps> = ({
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const onMove = (e: MouseEvent) => {
+      if (!visibleRef.current) return;
       const now = performance.now();
       const pr = pointerRef.current;
       const dt = pr.lastTime ? now - pr.lastTime : 16;
@@ -232,6 +256,8 @@ const DotGrid: React.FC<DotGridProps> = ({
       const rect = canvasRef.current!.getBoundingClientRect();
       pr.x = e.clientX - rect.left;
       pr.y = e.clientY - rect.top;
+      // Keep drawing long enough for any inertia push + return tween to settle.
+      requestDrawRef.current(returnDuration * 1000 + 1200);
 
       for (const dot of dotsRef.current) {
         const dist = Math.hypot(dot.cx - pr.x, dot.cy - pr.y);
