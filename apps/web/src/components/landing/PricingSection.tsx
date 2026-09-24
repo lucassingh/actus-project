@@ -38,7 +38,7 @@ export function PricingSection() {
                 },
                 {
                     role: "Usuario Técnico",
-                    description: "App móvil + Actus Bot",
+                    description: "Actus Bot en su teléfono",
                     price: "u$d 100",
                     period: "por mes"
                 }
@@ -73,7 +73,7 @@ export function PricingSection() {
                 },
                 {
                     role: "Usuario Técnico",
-                    description: "App móvil + Actus Bot",
+                    description: "Actus Bot en su teléfono",
                     price: "u$d 100",
                     period: "por mes"
                 }

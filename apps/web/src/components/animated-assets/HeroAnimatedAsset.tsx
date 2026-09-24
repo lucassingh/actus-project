@@ -3,7 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { User, Bot, MessageSquare, MoreHorizontal } from "lucide-react";
+import { CheckCheck } from "lucide-react";
+import bgWs from "@/assets/ws-ui/bg-ws.png";
+import headerWs from "@/assets/ws-ui/header-ws.svg";
+import footerWs from "@/assets/ws-ui/footer-ws.svg";
 
 type Message = {
     id: string;
@@ -125,26 +128,19 @@ export const HeroAnimatedAsset = () => {
                 {/* Dynamic Island Overlay (to cover scrolling text) */}
                 <div className="absolute top-[2.5%] left-1/2 -translate-x-1/2 w-[28%] h-[3.5%] bg-black rounded-full z-50 pointer-events-none" />
 
-                {/* Header */}
-                <div className="pt-14 pb-2 px-6 bg-gray-100/90 backdrop-blur-sm border-b border-neutral-200 flex items-center justify-between z-30 relative">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white shadow-sm">
-                            <Bot size={20} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-bold text-neutral-800 leading-none">Actus Bot</p>
-                            <p className="text-[11px] text-green-500 font-medium flex items-center gap-1 mt-0.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> En línea
-                            </p>
-                        </div>
-                    </div>
-                    <MoreHorizontal size={20} className="text-neutral-400" />
-                </div>
+                {/* Header (real WhatsApp header mockup) */}
+                <img src={headerWs.src} alt="" className="w-full h-auto shrink-0 relative z-30" />
 
                 {/* Chat Area */}
                 <div
                     ref={scrollRef}
-                    className="flex-1 px-5 py-4 overflow-y-auto flex flex-col space-y-4 bg-white relative scroll-smooth no-scrollbar"
+                    className="flex-1 px-4 py-4 overflow-y-auto flex flex-col space-y-2.5 relative scroll-smooth no-scrollbar"
+                    style={{
+                        backgroundImage: `url(${bgWs.src})`,
+                        backgroundSize: "260px",
+                        backgroundRepeat: "repeat",
+                        backgroundColor: "#EFE7DE",
+                    }}
                 >
                     {/* Spacer */}
                     <div className="h-2 w-full shrink-0" />
@@ -163,13 +159,17 @@ export const HeroAnimatedAsset = () => {
                             >
                                 <div
                                     className={cn(
-                                        "max-w-[85%] p-3.5 rounded-2xl text-[13px] shadow-sm leading-relaxed",
+                                        "max-w-[85%] px-3 py-2 rounded-lg text-[12.5px] shadow-sm leading-relaxed flex flex-wrap items-end gap-x-1.5",
                                         msg.sender === "bot"
-                                            ? "bg-primary text-white rounded-tl-none"
-                                            : "bg-gray-100 text-neutral-800 rounded-tr-none border border-gray-100"
+                                            ? "bg-white text-neutral-800 rounded-tl-none"
+                                            : "text-neutral-900 rounded-tr-none"
                                     )}
+                                    style={msg.sender === "user" ? { backgroundColor: "#DCF7C5" } : undefined}
                                 >
-                                    {msg.text}
+                                    <span>{msg.text}</span>
+                                    {msg.sender === "user" && (
+                                        <CheckCheck size={14} className="shrink-0 mb-0.5" style={{ color: "#3497F9" }} />
+                                    )}
                                 </div>
                             </motion.div>
                         ))}
@@ -182,21 +182,24 @@ export const HeroAnimatedAsset = () => {
                                 transition={{ duration: 0.2 }}
                                 className="flex justify-start w-full"
                             >
-                                <div className="bg-gray-50 border border-gray-100 p-3.5 rounded-2xl rounded-tl-none flex space-x-1.5 items-center shadow-sm w-fit">
+                                <div className="bg-white p-3 rounded-lg rounded-tl-none flex space-x-1.5 items-center shadow-sm w-fit">
                                     <motion.div
                                         animate={{ y: [0, -4, 0] }}
                                         transition={{ repeat: Infinity, duration: 0.6, delay: 0 }}
-                                        className="w-1.5 h-1.5 bg-gray-400 rounded-full"
+                                        className="w-1.5 h-1.5 rounded-full"
+                                        style={{ backgroundColor: "#1DAB61" }}
                                     />
                                     <motion.div
                                         animate={{ y: [0, -4, 0] }}
                                         transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
-                                        className="w-1.5 h-1.5 bg-gray-400 rounded-full"
+                                        className="w-1.5 h-1.5 rounded-full"
+                                        style={{ backgroundColor: "#1DAB61" }}
                                     />
                                     <motion.div
                                         animate={{ y: [0, -4, 0] }}
                                         transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }}
-                                        className="w-1.5 h-1.5 bg-gray-400 rounded-full"
+                                        className="w-1.5 h-1.5 rounded-full"
+                                        style={{ backgroundColor: "#1DAB61" }}
                                     />
                                 </div>
                             </motion.div>
@@ -205,15 +208,8 @@ export const HeroAnimatedAsset = () => {
                     <div className="h-4 w-full shrink-0" />
                 </div>
 
-                {/* Input Area (Mock) */}
-                <div className="p-4 border-t border-neutral-200 bg-gray-100 flex items-center space-x-3 z-30 pb-8">
-                    <div className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-primary shadow-sm hover:scale-105 transition-transform cursor-pointer">
-                        <MessageSquare size={16} />
-                    </div>
-                    <div className="flex-1 h-10 bg-white border border-neutral-200 rounded-full px-4 flex items-center shadow-inner">
-                        <span className="text-xs text-gray-400">Escribe un mensaje...</span>
-                    </div>
-                </div>
+                {/* Footer (real WhatsApp input bar mockup) */}
+                <img src={footerWs.src} alt="" className="w-full h-auto shrink-0 relative z-30" />
             </div>
         </div>
     );

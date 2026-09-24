@@ -4,7 +4,6 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ProblemSection } from "@/components/ProblemSection";
 import { SolutionSection } from "@/components/SolutionSection";
-import { PricingSection } from "@/components/PricingSection";
 import { Faqsection } from "@/components/Faqsection";
 import { ContactSection } from "@/components/ContactSection";
 import { BackToTop } from "@/components/ui/BackToTop";
@@ -17,7 +16,6 @@ export default function Home() {
             <ProductDefinition />
             <ProblemSection />
             <SolutionSection />
-            <PricingSection />
             <Faqsection />
             <ContactSection />
             <Footer />

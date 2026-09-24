@@ -6,7 +6,16 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["DATABASE_URL", "CLERK_SECRET_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"]
+      "env": [
+        "DATABASE_URL",
+        "CLERK_SECRET_KEY",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "WHATSAPP_ACCESS_TOKEN",
+        "WHATSAPP_PHONE_NUMBER_ID",
+        "WHATSAPP_APP_SECRET",
+        "WHATSAPP_VERIFY_TOKEN"
+      ]
     },
     "dev": {
       "cache": false,

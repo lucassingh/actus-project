@@ -1,5 +1,11 @@
 # 03 — API Contracts (Mobile ↔ Web)
 
+> **Operators now use WhatsApp, not the mobile app** — see
+> [`08-WHATSAPP-integration.md`](08-WHATSAPP-integration.md). The routes below
+> (Clerk-JWT-authenticated) remain in the codebase and still work, but WhatsApp via
+> `POST /api/v1/whatsapp/webhook` (HMAC-authenticated, no Clerk session) is the primary
+> path an incident report takes today. `AgentService.processMessage()` is shared by both.
+
 All endpoints are under `/api/v1/`. Authentication via Clerk JWT — mobile sends `Authorization: Bearer <clerk_session_token>`.
 
 ## Auth
@@ -47,6 +53,16 @@ All endpoints are under `/api/v1/`. Authentication via Clerk JWT — mobile send
 }
 ```
 
+## WhatsApp (operator channel)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/whatsapp/webhook` | `hub.verify_token` query param | Meta's webhook verification handshake |
+| POST | `/api/v1/whatsapp/webhook` | `X-Hub-Signature-256` HMAC | Incoming message → `processAgentMessage()` → reply via Graph API |
+
+Not JSON-in/JSON-out like the routes above — payload shape is Meta's, not ours. Full
+detail in [`08-WHATSAPP-integration.md`](08-WHATSAPP-integration.md).
+
 ## Users (admin/supervisor)
 
 | Method | Path | Role | Description |
@@ -54,7 +70,7 @@ All endpoints are under `/api/v1/`. Authentication via Clerk JWT — mobile send
 | GET | `/api/v1/users` | supervisor, admin | List users in tenant |
 | POST | `/api/v1/users/invite` | supervisor | Invite operator via Clerk |
 
-## Notes for mobile app migration (actus-app)
+## Notes for mobile app migration (actus-app) — kept for reference, no longer the operator's primary path
 
 The contract is **identical** to the v1 API except:
 1. Auth: same `Bearer` token header — Clerk session tokens work the same way

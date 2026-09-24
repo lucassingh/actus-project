@@ -21,11 +21,6 @@ export function Navbar() {
             icon: <DollarSign className="h-4 w-4 text-neutral-500 dark:text-white" />,
         },
         {
-            name: "Precios",
-            link: "#pricing",
-            icon: <DollarSign className="h-4 w-4 text-neutral-500 dark:text-white" />,
-        },
-        {
             name: "Contacto",
             link: "#contacto",
             icon: <MessageCircle className="h-4 w-4 text-neutral-500 dark:text-white" />,

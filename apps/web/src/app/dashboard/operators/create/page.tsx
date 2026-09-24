@@ -1,43 +1,55 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { UserPlus, Info } from "lucide-react";
 
-async function inviteOperator(formData: FormData) {
+async function createOperator(formData: FormData) {
   "use server";
 
-  const { userId, orgId } = await auth();
-  if (!userId) redirect("/sign-in");
-  if (!orgId) redirect("/dashboard/operators/create?error=no-org");
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) redirect("/sign-in");
 
-  const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId },
-    select: { role: true },
+  const supervisor = await prisma.user.findUnique({
+    where: { clerkUserId },
+    select: { role: true, tenantId: true },
   });
-  if (!user || user.role !== "SUPERVISOR") redirect("/dashboard");
+  if (!supervisor || supervisor.role !== "SUPERVISOR" || !supervisor.tenantId) redirect("/dashboard");
 
-  const email = (formData.get("email") as string)?.trim();
-  if (!email) redirect("/dashboard/operators/create?error=missing-email");
+  const name = (formData.get("name") as string)?.trim();
+  const lastname = (formData.get("lastname") as string)?.trim();
+  const department = (formData.get("department") as string)?.trim() || null;
+  const phoneNumber = (formData.get("phoneNumber") as string)?.replace(/\D/g, "");
+
+  if (!name || !lastname) redirect("/dashboard/operators/create?error=missing-name");
+  if (!phoneNumber) redirect("/dashboard/operators/create?error=missing-phone");
 
   try {
-    const client = await clerkClient();
-    await client.organizations.createOrganizationInvitation({
-      organizationId: orgId,
-      emailAddress: email,
-      role: "org:member",
-      inviterUserId: userId,
+    await prisma.user.create({
+      data: {
+        tenantId: supervisor.tenantId,
+        phoneNumber,
+        name,
+        lastname,
+        department,
+        email: "",
+        role: "OPERATOR",
+      },
     });
-  } catch {
-    redirect("/dashboard/operators/create?error=invite-failed");
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && err.code === "P2002") {
+      redirect("/dashboard/operators/create?error=duplicate-phone");
+    }
+    redirect("/dashboard/operators/create?error=create-failed");
   }
 
-  redirect("/dashboard/operators?invited=1");
+  redirect("/dashboard/operators?created=1");
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
-  "no-org": "Tu cuenta no tiene una Organización de Clerk configurada. Creá una en el panel de Clerk para poder invitar operadores.",
-  "missing-email": "El email es requerido.",
-  "invite-failed": "No se pudo enviar la invitación. El email puede ya estar registrado o invitado.",
+  "missing-name": "Nombre y apellido son requeridos.",
+  "missing-phone": "El número de WhatsApp es requerido.",
+  "duplicate-phone": "Ese número ya está registrado para otro operador.",
+  "create-failed": "No se pudo crear el operador. Intentá de nuevo.",
 };
 
 export default async function CreateOperatorPage({
@@ -45,11 +57,11 @@ export default async function CreateOperatorPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const { userId, orgId } = await auth();
-  if (!userId) redirect("/sign-in");
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) redirect("/sign-in");
 
   const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId },
+    where: { clerkUserId },
     select: { role: true, tenantId: true },
   });
   if (!user || user.role !== "SUPERVISOR") redirect("/dashboard");
@@ -65,20 +77,10 @@ export default async function CreateOperatorPage({
         >
           <h1 className="text-2xl font-bold">Nuevo operador</h1>
           <p className="text-white/80 text-sm mt-1">
-            Enviá una invitación por email para que el operador cree su cuenta
+            Registrá el número de WhatsApp del operador para que pueda hablar con el asistente
           </p>
         </div>
       </div>
-
-      {!orgId && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-5">
-          <p className="text-amber-800 font-semibold text-sm">Sin organización de Clerk</p>
-          <p className="text-amber-700 text-sm mt-1">
-            Para invitar operadores necesitás tener una Organización activa en Clerk. Creá una en{" "}
-            <span className="font-mono text-xs">dashboard.clerk.com</span> y luego volvé a iniciar sesión.
-          </p>
-        </div>
-      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5">
@@ -87,17 +89,65 @@ export default async function CreateOperatorPage({
       )}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <form action={inviteOperator} className="space-y-5">
+        <form action={createOperator} className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Nombre
+              </label>
+              <input
+                id="name"
+                type="text"
+                name="name"
+                required
+                placeholder="Juan"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+                style={{ "--tw-ring-color": "var(--primary)" } as React.CSSProperties}
+              />
+            </div>
+            <div>
+              <label htmlFor="lastname" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Apellido
+              </label>
+              <input
+                id="lastname"
+                type="text"
+                name="lastname"
+                required
+                placeholder="Pérez"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+                style={{ "--tw-ring-color": "var(--primary)" } as React.CSSProperties}
+              />
+            </div>
+          </div>
+
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email del operador
+            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Número de WhatsApp
             </label>
             <input
-              id="email"
-              type="email"
-              name="email"
+              id="phoneNumber"
+              type="tel"
+              name="phoneNumber"
               required
-              placeholder="operador@empresa.com"
+              placeholder="5493462565888"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+              style={{ "--tw-ring-color": "var(--primary)" } as React.CSSProperties}
+            />
+            <p className="text-xs text-gray-400 mt-1.5">
+              Código de país + 9 (para celulares argentinos) + característica sin el 0 + número sin el 15. Ej: 3462-565888 → 5493462565888.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Área <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <input
+              id="department"
+              type="text"
+              name="department"
+              placeholder="Mantenimiento"
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent"
               style={{ "--tw-ring-color": "var(--primary)" } as React.CSSProperties}
             />
@@ -106,12 +156,11 @@ export default async function CreateOperatorPage({
           <div className="flex items-center gap-3 pt-1">
             <button
               type="submit"
-              disabled={!orgId}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity"
               style={{ backgroundColor: "var(--primary)" }}
             >
               <UserPlus size={16} />
-              Enviar invitación
+              Crear operador
             </button>
             <a
               href="/dashboard/operators"
@@ -128,7 +177,7 @@ export default async function CreateOperatorPage({
         <div>
           <p className="text-blue-800 font-medium text-sm">¿Cómo funciona?</p>
           <p className="text-blue-700 text-sm mt-1">
-            El operador recibe un email con un link para unirse a tu organización. Una vez que inicia sesión en la app mobile, su perfil queda registrado automáticamente en tu empresa.
+            No hace falta que el operador instale nada: apenas lo registrás acá, ya puede escribirle al asistente desde su WhatsApp normal y empezar a reportar incidentes.
           </p>
         </div>
       </div>

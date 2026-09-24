@@ -94,11 +94,11 @@ export const Faqsection = () => {
             items: [
                 {
                     question: "¿Qué necesito para implementar Actus IA en mi planta?",
-                    answer: "Solo necesita conexión a internet y dispositivos móviles/tablets para sus técnicos. Nosotros nos encargamos de la configuración, carga inicial de documentación y capacitación de su equipo."
+                    answer: "Que sus técnicos tengan un teléfono — no hace falta instalar nada nuevo, ya cuentan con lo necesario. Nosotros nos encargamos de la configuración, carga inicial de documentación y capacitación de su equipo."
                 },
                 {
                     question: "¿Funciona sin internet o en zonas con conectividad limitada?",
-                    answer: "Sí, tiene modo offline. Los técnicos pueden capturar problemas y la app sincroniza automáticamente cuando recupera conexión. El procesamiento de IA requiere internet pero trabaja en segundo plano."
+                    answer: "Sí. El asistente funciona como cualquier chat: si se corta la señal un instante, el mensaje queda encolado y se envía solo apenas vuelve la conexión, sin que el técnico tenga que hacer nada distinto."
                 },
                 {
                     question: "¿Qué tipo de documentación técnica puede procesar el sistema?",

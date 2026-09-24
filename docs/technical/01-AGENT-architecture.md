@@ -9,18 +9,21 @@ This replaces the previous n8n + Gemini workflow entirely.
 ## Flow
 
 ```
-Mobile App
+Operator's WhatsApp                    (legacy: Mobile App)
+  │                                             │
+  │ POST /api/v1/whatsapp/webhook               │ POST /api/v1/agent/message
+  │ (Meta payload — see                         │ { eventId?, messageType, content, file? }
+  │  08-WHATSAPP-integration.md)                │
+  ▼                                             ▼
+                    AgentService.processMessage()
   │
-  │ POST /api/v1/agent/message
-  │ { eventId?, messageType, content, file? }
-  │
-  ▼
-AgentService.processMessage()
-  │
-  ├─ 1. processInput()
+  ├─ 1. extractText() — apps/web/src/services/agent.service.ts
   │     text   → use as-is
-  │     audio  → Claude API (audio understanding)
-  │     image  → Claude API (vision)
+  │     audio  → OpenAI Whisper transcription (lib/transcription.ts) — NOT Claude.
+  │              Claude's Messages API has no audio content-block; a `document`
+  │              block only accepts media_type "application/pdf" (confirmed
+  │              against the live API, see 08-WHATSAPP-integration.md).
+  │     image  → Claude API (vision) — this one is native and correct
   │
   ├─ 2. KnowledgeBaseService.search(text, tenantId)
   │     → pgvector cosine similarity on problem_embedding
@@ -49,7 +52,8 @@ AgentService.processMessage()
 
 | Use case | Model | Reason |
 |---|---|---|
-| Text/audio/image response | `claude-haiku-4-5-20251001` | Fast, cheap, sufficient for operator queries |
+| Text/image response | `claude-haiku-4-5-20251001` | Fast, cheap, sufficient for operator queries |
+| Audio transcription | `whisper-1` (OpenAI) | Claude has no audio input modality — see above |
 | Complex document analysis | `claude-sonnet-4-6` | Only for admin-initiated doc processing |
 
 ## System prompt structure

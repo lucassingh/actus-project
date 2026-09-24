@@ -6,5 +6,6 @@
 | 02 | [02-DATA-model.md](02-DATA-model.md) | Prisma schema, entity relationships, pgvector usage |
 | 03 | [03-API-contracts.md](03-API-contracts.md) | REST API contracts for mobile app consumption |
 | 04 | [04-ROLES-and-tenancy.md](04-ROLES-and-tenancy.md) | Clerk Organizations, roles, tenant isolation middleware |
-| 05 | [05-AUTH-flow.md](05-AUTH-flow.md) | Clerk auth flow for dashboard and mobile |
-| 06 | [06-DEPLOYMENT.md](06-DEPLOYMENT.md) | Vercel deployment, environment variables, Neon setup |
+| 05 | [05-TESTING-circuit.md](05-TESTING-circuit.md) | End-to-end manual testing guide (admin → supervisor → operator → agent) |
+| 07 | [07-IMPLEMENTATION-plan.md](07-IMPLEMENTATION-plan.md) | Point-in-time gap analysis / backlog snapshot (2026-06-29) |
+| 08 | [08-WHATSAPP-integration.md](08-WHATSAPP-integration.md) | WhatsApp webhook, System User token, sandbox gotchas |

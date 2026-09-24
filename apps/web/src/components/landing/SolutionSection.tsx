@@ -64,7 +64,7 @@ export function SolutionSection() {
         className="w-full max-w-[320px] sm:max-w-2xl md:max-w-none mx-auto md:mx-0 text-left"
     >
         <h3 className="px-0 sm:px-0 text-[1.5rem] sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-4 tracking-tight leading-[1.25]">
-            <span className="block">Nuestra app movil para operadores.</span>
+            <span className="block">El asistente que sus operadores ya llevan en el bolsillo.</span>
             <span className="block text-accent mt-1">Cree eventos para cada necesidad.</span>
         </h3>
         <p className="px-0 sm:px-0 text-[1.08rem] sm:text-lg md:text-xl text-white/90 max-w-3xl leading-[1.6] pr-0">

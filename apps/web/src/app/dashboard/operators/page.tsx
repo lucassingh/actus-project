@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { UserCircle, Mail, Shield } from "lucide-react";
+import { UserCircle, Phone, Shield } from "lucide-react";
 
 export default async function OperatorsPage() {
   const { userId: clerkUserId } = await auth();
@@ -17,7 +17,7 @@ export default async function OperatorsPage() {
     where: { tenantId: user.tenantId, role: "OPERATOR" },
     orderBy: { createdAt: "desc" },
     select: {
-      id: true, name: true, lastname: true, email: true,
+      id: true, name: true, lastname: true, phoneNumber: true,
       isActive: true, department: true, lastLoginAt: true, createdAt: true,
     },
   });
@@ -41,14 +41,14 @@ export default async function OperatorsPage() {
           <div className="p-12 text-center">
             <UserCircle size={40} className="mx-auto text-gray-200 mb-3" />
             <p className="text-gray-500 font-medium">No hay operadores registrados</p>
-            <p className="text-gray-400 text-sm mt-1">Invitá operadores desde el panel de Clerk</p>
+            <p className="text-gray-400 text-sm mt-1">Registrá el número de WhatsApp de tu primer operador</p>
           </div>
         ) : (
           <table className="w-full">
             <thead className="border-b border-gray-100 bg-gray-50">
               <tr>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Nombre</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Email</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">WhatsApp</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Área</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Estado</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Último acceso</th>
@@ -72,8 +72,8 @@ export default async function OperatorsPage() {
                   </td>
                   <td className="px-5 py-3.5 text-sm text-gray-500">
                     <span className="flex items-center gap-1.5">
-                      <Mail size={12} className="text-gray-300" />
-                      {op.email}
+                      <Phone size={12} className="text-gray-300" />
+                      {op.phoneNumber ?? "-"}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-sm text-gray-500">

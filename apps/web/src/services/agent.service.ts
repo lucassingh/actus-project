@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { generateEmbedding, embeddingToSql } from "@/lib/embeddings";
+import { transcribeAudio } from "@/lib/transcription";
 import type {
   AgentMessageRequest,
   AgentMessageResponse,
@@ -108,8 +109,13 @@ async function extractText(input: AgentMessageRequest): Promise<string> {
     throw new Error("File required for audio/image messages");
   }
 
-  // Claude handles both audio and image natively
-  const mediaType = input.fileMimeType as "image/jpeg" | "image/png" | "image/webp" | "audio/wav" | "audio/mp3" | "audio/mpeg";
+  // Claude's Messages API has no audio content-block — only Whisper transcribes it.
+  // (document blocks only accept media_type "application/pdf"; confirmed against the live API.)
+  if (input.messageType === "audio") {
+    return transcribeAudio(input.file, input.fileMimeType);
+  }
+
+  const mediaType = input.fileMimeType as "image/jpeg" | "image/png" | "image/webp";
 
   const response = await anthropic.messages.create({
     model: AGENT_MODEL,
@@ -119,18 +125,16 @@ async function extractText(input: AgentMessageRequest): Promise<string> {
         role: "user",
         content: [
           {
-            type: input.messageType === "image" ? "image" : "document",
+            type: "image",
             source: {
               type: "base64",
               media_type: mediaType,
               data: input.file,
             },
-          } as Anthropic.ImageBlockParam,
+          },
           {
             type: "text",
-            text: input.messageType === "image"
-              ? "Describe what you see in this image in detail. Focus on any machinery, equipment, damage, or anomalies visible. Respond in Spanish."
-              : "Transcribe this audio message exactly as spoken. Respond in Spanish.",
+            text: "Describe what you see in this image in detail. Focus on any machinery, equipment, damage, or anomalies visible. Respond in Spanish.",
           },
         ],
       },

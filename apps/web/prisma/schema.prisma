@@ -46,7 +46,8 @@ model Tenant {
 
 model User {
   id          Int      @id @default(autoincrement())
-  clerkUserId String   @unique
+  clerkUserId String?  @unique
+  phoneNumber String?  @unique
   tenantId    Int?
   email       String
   name        String

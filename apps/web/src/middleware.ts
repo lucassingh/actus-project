@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks(.*)",
+  "/api/v1/whatsapp/webhook(.*)", // authenticated via HMAC signature, not a Clerk session
 ]);
 
 const isApiRoute = createRouteMatcher(["/api/v1(.*)"]);

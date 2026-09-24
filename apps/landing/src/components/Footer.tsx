@@ -20,7 +20,6 @@ export const Footer = () => {
         { label: "Inicio", href: "/" },
         { label: "Características", href: "/features" },
         { label: "Soluciones", href: "/solutions" },
-        { label: "Precios", href: "/pricing" },
         { label: "Sobre Nosotros", href: "/about" },
         { label: "Contacto", href: "/contact" },
     ];

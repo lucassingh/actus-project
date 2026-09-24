@@ -40,11 +40,12 @@ The mobile app (`actus-app/` — Expo React Native) lives in its own repo and co
 ## Architecture overview
 
 ```
-[Mobile App — Expo]
-      │ REST (Bearer token via Clerk JWT)
-      ▼
+[Operator's WhatsApp]                  [Mobile App — Expo, legacy]
+      │ Meta Cloud API webhook               │ REST (Bearer token via Clerk JWT)
+      ▼                                       ▼
 [apps/web — Next.js API Routes]
       │
+      ├─► /api/v1/whatsapp/webhook — HMAC-authenticated, no Clerk session (see below)
       ├─► /api/v1/auth/*      — Clerk webhook sync + session
       ├─► /api/v1/events/*    — CRUD events (incidents, maintenance)
       ├─► /api/v1/agent/*     — AgentService: text/audio/image → Claude → KB
@@ -59,12 +60,18 @@ The mobile app (`actus-app/` — Expo React Native) lives in its own repo and co
       └─► /dashboard/events, /dashboard/operators, /dashboard/kb, ...
 ```
 
+Operators report incidents via WhatsApp (text/audio/image), not the mobile app — see
+[`docs/technical/08-WHATSAPP-integration.md`](docs/technical/08-WHATSAPP-integration.md).
+Supervisors/admins still use the web dashboard via Clerk, unchanged. The mobile app and
+its `/api/v1/agent/message` + `/api/v1/events/*` routes remain in the codebase but are no
+longer an operator's primary path.
+
 ### Authentication & multi-tenancy
 
-- Clerk handles auth for both dashboard (web) and mobile (JWT verification via Clerk SDK)
+- Clerk handles auth for the dashboard (web) and legacy mobile (JWT verification via Clerk SDK) — **operators no longer have Clerk accounts**, they're identified by `User.phoneNumber` instead (see [`docs/technical/04-ROLES-and-tenancy.md`](docs/technical/04-ROLES-and-tenancy.md))
 - Each industrial company = one Clerk Organization
-- Roles: `admin` (system), `supervisor` (org admin), `operator` (org member)
-- Next.js middleware enforces tenant isolation on every API route
+- Roles: `admin` (system), `supervisor` (org admin), `operator` (phone number, WhatsApp)
+- Next.js middleware enforces tenant isolation on every API route, except `/api/v1/whatsapp/webhook` which authenticates via HMAC signature instead of a Clerk session
 
 ### Agent flow (replaces n8n + Gemini)
 
@@ -203,4 +210,6 @@ npx prisma db push   # Sync schema to Neon
 - Data model: [`docs/technical/02-DATA-model.md`](docs/technical/02-DATA-model.md)
 - API contracts (mobile): [`docs/technical/03-API-contracts.md`](docs/technical/03-API-contracts.md)
 - Multi-tenancy & roles: [`docs/technical/04-ROLES-and-tenancy.md`](docs/technical/04-ROLES-and-tenancy.md)
+- End-to-end testing guide: [`docs/technical/05-TESTING-circuit.md`](docs/technical/05-TESTING-circuit.md)
+- WhatsApp integration: [`docs/technical/08-WHATSAPP-integration.md`](docs/technical/08-WHATSAPP-integration.md)
 - MVP scope: [`docs/commercial/01-MVP-scope.md`](docs/commercial/01-MVP-scope.md)
