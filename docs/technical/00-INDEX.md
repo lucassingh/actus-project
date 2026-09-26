@@ -7,6 +7,7 @@
 | 03 | [03-API-contracts.md](03-API-contracts.md) | REST API contracts for mobile app consumption |
 | 04 | [04-ROLES-and-tenancy.md](04-ROLES-and-tenancy.md) | Clerk Organizations, roles, tenant isolation middleware |
 | 05 | [05-TESTING-circuit.md](05-TESTING-circuit.md) | End-to-end manual testing guide (admin → supervisor → operator → agent) |
+| 06 | [06-ENVIRONMENTS-and-workflow.md](06-ENVIRONMENTS-and-workflow.md) | Prod/develop/local environments, git flow, migrations, prod→develop data sync |
 | 07 | [07-IMPLEMENTATION-plan.md](07-IMPLEMENTATION-plan.md) | Point-in-time gap analysis / backlog snapshot (2026-06-29) |
 | 08 | [08-WHATSAPP-integration.md](08-WHATSAPP-integration.md) | WhatsApp webhook, System User token, sandbox gotchas |
 | UI | [UI/landing/ui-landing.md](UI/landing/ui-landing.md) | Landing restyle plan: fonts, colors, React Bits per section |
