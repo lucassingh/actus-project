@@ -1,7 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { BookOpen, Star, Clock, Settings } from "lucide-react";
+import { BookOpen, Clock, Cog } from "lucide-react";
+import { Page, PageHeader, Card, EmptyState } from "@/components/dashboard/ui";
 
 export default async function KnowledgeBasePage() {
   const { userId: clerkUserId } = await auth();
@@ -25,86 +26,61 @@ export default async function KnowledgeBasePage() {
   });
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div
-          className="rounded-2xl p-6 text-white"
-          style={{ background: "linear-gradient(135deg, var(--primary), var(--secondary))" }}
-        >
-          <h1 className="text-2xl font-bold">Base de Conocimiento</h1>
-          <p className="text-white/80 text-sm mt-1">
-            {entries.length} incident{entries.length !== 1 ? "es" : "e"} documentado{entries.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-      </div>
+    <Page>
+      <PageHeader
+        title="Base de conocimiento"
+        description={`${entries.length} caso${entries.length !== 1 ? "s" : ""} resuelto${entries.length !== 1 ? "s" : ""}. El agente los usa para responder a los operadores.`}
+      />
 
-      {entries.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-          <BookOpen size={40} className="mx-auto text-gray-200 mb-3" />
-          <p className="text-gray-500 font-medium">La base de conocimiento está vacía</p>
-          <p className="text-gray-400 text-sm mt-1">
-            Se llena automáticamente cuando los operadores resuelven incidentes
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {entries.map((entry) => (
-            <div key={entry.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm line-clamp-2">{entry.problemText}</h3>
-                </div>
-                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                  {/* Effectiveness score */}
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <Star
-                        key={i}
-                        size={12}
-                        className={i < Math.round(entry.effectivenessScore / 2) ? "text-yellow-400" : "text-gray-200"}
-                        fill={i < Math.round(entry.effectivenessScore / 2) ? "#facc15" : "transparent"}
-                      />
-                    ))}
-                    <span className="text-xs text-gray-400 ml-1">{entry.effectivenessScore}/10</span>
+      <Card>
+        {entries.length === 0 ? (
+          <EmptyState
+            icon={BookOpen}
+            title="La base de conocimiento está vacía"
+            description="Se completa sola: cada incidente que un operador resuelve con el agente queda guardado acá."
+          />
+        ) : (
+          <ul>
+            {entries.map((entry) => (
+              <li key={entry.id} className="border-b border-line-subtle px-5 py-4 last:border-0">
+                <div className="flex items-start justify-between gap-6">
+                  <p className="text-sm font-medium text-fg">{entry.problemText}</p>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold tabular-nums text-fg">
+                      {entry.effectivenessScore}
+                      <span className="font-normal text-fg-subtle">/10</span>
+                    </p>
+                    <p className="text-xs text-fg-subtle">efectividad</p>
                   </div>
-                  <span className="text-xs text-gray-400">
-                    Consultado {entry.timesReferenced} veces
-                  </span>
                 </div>
-              </div>
 
-              <div className="bg-green-50 border border-green-100 rounded-xl p-3 mb-3">
-                <p className="text-xs text-green-700 font-medium mb-1">Solución</p>
-                <p className="text-sm text-green-800 line-clamp-3">{entry.solutionText}</p>
-              </div>
+                <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-fg-muted">{entry.solutionText}</p>
 
-              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-                {entry.machineName && (
-                  <span className="flex items-center gap-1">
-                    <Settings size={11} />
-                    {entry.machineName}
-                  </span>
-                )}
-                {entry.timeToResolveMin && (
-                  <span className="flex items-center gap-1">
-                    <Clock size={11} />
-                    {entry.timeToResolveMin} min
-                  </span>
-                )}
-                {entry.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: "var(--primary)15", color: "var(--primary)" }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-fg-subtle">
+                  {entry.machineName && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Cog className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                      {entry.machineName}
+                    </span>
+                  )}
+                  {entry.timeToResolveMin != null && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                      {entry.timeToResolveMin} min para resolver
+                    </span>
+                  )}
+                  <span>Consultado {entry.timesReferenced} {entry.timesReferenced === 1 ? "vez" : "veces"}</span>
+                  {entry.tags.map((tag) => (
+                    <span key={tag} className="rounded-md border border-line px-1.5 py-0.5 text-fg-muted">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </Page>
   );
 }

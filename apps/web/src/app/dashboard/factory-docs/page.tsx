@@ -2,7 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ingestFactoryDocPdf, deleteFactoryDoc } from "@/services/factory-doc.service";
-import { FileText, Upload, Trash2, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { FileText, Upload, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Page, PageHeader, Card, CardHeader, CardFooter, Badge, EmptyState, Alert, buttonStyles, table, formatDate } from "@/components/dashboard/ui";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Server Actions
@@ -105,150 +106,111 @@ export default async function FactoryDocsPage({
   });
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div
-          className="rounded-2xl p-6 text-white"
-          style={{ background: "linear-gradient(135deg, var(--primary), var(--secondary))" }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Documentos de planta</h1>
-              <p className="text-white/80 text-sm mt-1">
-                {docs.length} documento{docs.length !== 1 ? "s" : ""} · el agente los usa como contexto al responder
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <Page>
+      <PageHeader
+        title="Documentos de planta"
+        description="Manuales, planos y procedimientos que el agente consulta al responder."
+      />
 
-      {/* Feedback banners */}
       {uploaded && (
-        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl p-4 mb-5">
-          <CheckCircle size={18} className="text-green-600 flex-shrink-0" />
-          <p className="text-green-800 text-sm font-medium">
-            Documento cargado y procesado correctamente. El agente ya puede usarlo.
-          </p>
-        </div>
+        <Alert tone="success" icon={CheckCircle2}>
+          Documento procesado. El agente ya puede usarlo.
+        </Alert>
       )}
       {error && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl p-4 mb-5">
-          <AlertCircle size={18} className="text-red-500 flex-shrink-0" />
-          <p className="text-red-700 text-sm">{ERROR_MESSAGES[error] ?? "Error desconocido."}</p>
-        </div>
+        <Alert tone="danger" icon={AlertCircle}>
+          {ERROR_MESSAGES[error] ?? "Error desconocido."}
+        </Alert>
       )}
 
-      {/* Upload form */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-        <p className="text-sm font-semibold text-gray-800 mb-1">Subir documento (PDF)</p>
-        <p className="text-xs text-gray-400 mb-4">
-          Máximo 20 MB · Solo PDFs con texto seleccionable (no escaneados) · Límite de 80 páginas por índice
-        </p>
-        <form action={uploadDoc} className="flex items-center gap-3 flex-wrap">
-          <input
-            type="file"
-            name="file"
-            accept=".pdf,application/pdf"
-            required
-            className="block text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:text-white file:cursor-pointer cursor-pointer"
-            style={{ "--file-bg": "var(--primary)" } as React.CSSProperties}
-          />
-          <button
-            type="submit"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: "var(--primary)" }}
-          >
-            <Upload size={15} />
-            Procesar e indexar
-          </button>
+      <Card className="mb-6">
+        <CardHeader title="Subir documento" description="PDF con texto seleccionable, hasta 20 MB. Los escaneados como imagen no se pueden leer." />
+        <form action={uploadDoc}>
+          <div className="px-5 py-5">
+            <label
+              htmlFor="file"
+              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#D2D2DA] bg-[#FAFAFB] px-6 py-8 text-center transition-colors duration-150 hover:border-primary/40 hover:bg-[#F6F7FB]"
+            >
+              <Upload className="h-5 w-5 text-fg-subtle" strokeWidth={1.75} aria-hidden="true" />
+              <span className="text-sm font-medium text-fg">Elegí un PDF</span>
+              <span className="text-xs text-fg-subtle">Se indexan hasta 80 páginas por documento</span>
+              <input
+                id="file"
+                type="file"
+                name="file"
+                accept=".pdf,application/pdf"
+                required
+                className="mt-2 block max-w-full text-[13px] text-fg-muted file:mr-3 file:h-8 file:cursor-pointer file:rounded-md file:border file:border-line file:bg-white file:px-3 file:text-[13px] file:font-medium file:text-fg hover:file:bg-[#FAFAFB]"
+              />
+            </label>
+          </div>
+          <CardFooter hint="El procesamiento puede demorar entre 10 y 60 segundos.">
+            <button type="submit" className={buttonStyles.primary}>
+              Procesar e indexar
+            </button>
+          </CardFooter>
         </form>
-        <p className="text-xs text-gray-400 mt-3">
-          El procesamiento puede demorar 10–60 segundos según el tamaño del PDF.
-        </p>
-      </div>
+      </Card>
 
-      {/* Doc list */}
-      {docs.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-          <FileText size={40} className="mx-auto text-gray-200 mb-3" />
-          <p className="text-gray-500 font-medium">No hay documentos cargados</p>
-          <p className="text-gray-400 text-sm mt-1 max-w-sm mx-auto">
-            Subí manuales de máquinas, planos y procedimientos para que el agente los use como referencia.
-          </p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead className="border-b border-gray-100 bg-gray-50">
-              <tr>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Nombre</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Páginas</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Fragmentos indexados</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Tamaño</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Estado</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Fecha</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {docs.map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <span className="flex items-center gap-2 font-medium text-gray-900 text-sm">
-                      <FileText size={14} className="text-gray-400 flex-shrink-0" />
-                      <span className="truncate max-w-xs" title={doc.name}>{doc.name}</span>
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-gray-500">
-                    {doc.pageCount ?? "—"}
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-gray-500">
-                    {doc.isProcessed ? (
-                      <span className="font-medium text-gray-800">{doc.chunkCount}</span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-gray-500">
-                    {doc.fileSize ? formatBytes(doc.fileSize) : "—"}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    {doc.isProcessed ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium text-green-700 bg-green-50">
-                        <CheckCircle size={11} />
-                        Indexado
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium text-yellow-700 bg-yellow-50">
-                        <Clock size={11} />
-                        Procesando
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs text-gray-400">
-                    {new Date(doc.createdAt).toLocaleDateString("es-ES", {
-                      day: "numeric", month: "short", year: "numeric",
-                    })}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <form action={removeDoc}>
-                      <input type="hidden" name="docId" value={doc.id} />
-                      <button
-                        type="submit"
-                        title="Eliminar documento"
-                        className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </form>
-                  </td>
+      <Card>
+        <CardHeader title="Documentos" description={`${docs.length} cargado${docs.length !== 1 ? "s" : ""}`} />
+        {docs.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="Todavía no hay documentos"
+            description="Subí los manuales de las máquinas para que el agente responda con la información de su planta."
+          />
+        ) : (
+          <div className={table.wrap}>
+            <table className={table.table}>
+              <thead>
+                <tr>
+                  <th className={table.th}>Nombre</th>
+                  <th className={table.th}>Páginas</th>
+                  <th className={table.th}>Fragmentos</th>
+                  <th className={table.th}>Tamaño</th>
+                  <th className={table.th}>Estado</th>
+                  <th className={table.th}>Subido</th>
+                  <th className={table.th}>
+                    <span className="sr-only">Acciones</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody>
+                {docs.map((doc) => (
+                  <tr key={doc.id} className={table.tr}>
+                    <td className={table.td}>
+                      <span className="flex items-center gap-2 font-medium text-fg">
+                        <FileText className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} aria-hidden="true" />
+                        <span className="max-w-xs truncate" title={doc.name}>{doc.name}</span>
+                      </span>
+                    </td>
+                    <td className={`${table.td} tabular-nums`}>{doc.pageCount ?? "-"}</td>
+                    <td className={`${table.td} tabular-nums`}>{doc.isProcessed ? doc.chunkCount : "-"}</td>
+                    <td className={`${table.td} tabular-nums`}>{doc.fileSize ? formatBytes(doc.fileSize) : "-"}</td>
+                    <td className={table.td}>
+                      <Badge tone={doc.isProcessed ? "success" : "warning"}>{doc.isProcessed ? "Indexado" : "Procesando"}</Badge>
+                    </td>
+                    <td className={table.td}>{formatDate(doc.createdAt)}</td>
+                    <td className={`${table.td} text-right`}>
+                      <form action={removeDoc}>
+                        <input type="hidden" name="docId" value={doc.id} />
+                        <button
+                          type="submit"
+                          aria-label={`Eliminar ${doc.name}`}
+                          className={`${buttonStyles.icon} hover:bg-[#FDEEEE] hover:text-[#B42626]`}
+                        >
+                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </Page>
   );
 }

@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/dashboard/Sidebar";
+import { currentUser } from "@clerk/nextjs/server";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ensureDbUser, AuthError } from "@/lib/clerk";
+import { prisma } from "@/lib/prisma";
+import { getOrgLogos } from "@/lib/org-logos";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let user;
@@ -13,12 +16,29 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user.isActive) redirect("/sign-in");
 
+  const isAdmin = user.role === "ADMIN";
+  const [clerkUser, tenant] = await Promise.all([
+    currentUser(),
+    // A platform admin can be a member of an org they created; their workspace is still Actus.
+    !isAdmin && user.tenantId
+      ? prisma.tenant.findUnique({ where: { id: user.tenantId }, select: { name: true, clerkOrgId: true } })
+      : null,
+  ]);
+  const logos = tenant ? await getOrgLogos([tenant.clerkOrgId]) : {};
+
+  const displayName =
+    clerkUser?.fullName || user.name || clerkUser?.primaryEmailAddress?.emailAddress || "Usuario";
+
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      <Sidebar userRole={user.role} />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+    <DashboardShell
+      user={{
+        role: user.role,
+        displayName,
+        workspace: isAdmin ? "Actus" : (tenant?.name ?? "Actus"),
+        workspaceLogo: isAdmin ? "/logos/isologo-light.svg" : tenant ? logos[tenant.clerkOrgId] : null,
+      }}
+    >
+      {children}
+    </DashboardShell>
   );
 }
