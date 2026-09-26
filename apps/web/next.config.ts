@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
   experimental: {
@@ -24,4 +25,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// The Sentry plugin only uploads source maps: without a token (local dev, CI) it's skipped.
+export default process.env.SENTRY_AUTH_TOKEN
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      silent: !process.env.CI,
+    })
+  : nextConfig;

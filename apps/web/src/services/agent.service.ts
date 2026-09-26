@@ -13,6 +13,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const AGENT_MODEL = "claude-haiku-4-5-20251001";
 const MAX_HISTORY_TURNS = 10; // last N user+assistant turns sent to Claude
+const MAX_EVENT_MESSAGES = 40; // hard cap on stored user+assistant messages per event
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main entry point
@@ -22,17 +23,27 @@ export async function processAgentMessage(
   input: AgentMessageRequest,
   context: { userId: number; tenantId: number }
 ): Promise<AgentMessageResponse> {
-  // 1. Resolve or create the event
-  const event = await resolveEvent(input, context);
-
-  // 2. Process input (text / audio / image → text)
+  // 1. Process input (text / audio / image → text)
   const userText = await extractText(input);
 
-  // 3. Get RAG context from knowledge base
-  const ragContext = await getRAGContext(userText, context.tenantId);
+  // 2. Resolve or create the event — a newly created event captures this first message
+  //    as its problem statement, so the KB embedding and the dashboard reflect the real
+  //    incident instead of a placeholder.
+  const event = await resolveEvent(input, context, userText);
 
-  // 4. Build conversation history from the event
+  // 3. Cap the conversation length to bound token cost — stop before RAG + Claude.
   const history = buildHistory(event.conversationHistory as ConversationHistoryJson | null);
+  if (history.messages.length >= MAX_EVENT_MESSAGES) {
+    return {
+      response:
+        "Este incidente ya acumuló muchos mensajes. Cerralo y abrí uno nuevo para seguir con este tema.",
+      eventId: event.id,
+      eventUpdate: null,
+    };
+  }
+
+  // 4. Get RAG context from knowledge base
+  const ragContext = await getRAGContext(userText, context.tenantId);
 
   // 5. Call Claude
   const tenant = await prisma.tenant.findUnique({
@@ -77,7 +88,8 @@ export async function processAgentMessage(
 
 async function resolveEvent(
   input: AgentMessageRequest,
-  context: { userId: number; tenantId: number }
+  context: { userId: number; tenantId: number },
+  problemText: string
 ) {
   if (input.eventId) {
     const event = await prisma.event.findFirst({
@@ -87,17 +99,30 @@ async function resolveEvent(
     return event;
   }
 
-  // Create a new draft event
+  // Create a new draft event. The operator's first message is the incident's problem —
+  // persist it as problemContent (used to build the KB embedding on resolution) and as a
+  // human-readable title for the supervisor dashboard.
   return prisma.event.create({
     data: {
       tenantId: context.tenantId,
       creatorId: context.userId,
-      title: "New incident",
+      title: deriveTitle(problemText),
+      problemContent: problemText,
       status: "DRAFT",
       contentType: input.messageType === "text" ? "TEXT" : input.messageType === "audio" ? "AUDIO" : "IMAGE",
       conversationHistory: { messages: [] },
     },
   });
+}
+
+// A concise, single-line title from the operator's first message, for the dashboard list.
+// B4 can upgrade this to a Claude-generated title; a clean truncation is enough here and
+// costs no extra API call.
+function deriveTitle(text: string): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return "Incidente sin descripción";
+  const MAX = 70;
+  return clean.length <= MAX ? clean : clean.slice(0, MAX).trimEnd() + "…";
 }
 
 async function extractText(input: AgentMessageRequest): Promise<string> {
@@ -343,7 +368,7 @@ async function persistConversation(
           createKBEntryWithEmbedding({
             tenantId: event.tenantId,
             eventId,
-            problemText: event.problemContent ?? "Incident",
+            problemText: event.problemContent ?? "Incidente",
             solutionText: lastAssistant.content,
           }).catch((err) => console.error("[KB creation failed]", err));
         }

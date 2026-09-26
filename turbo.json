@@ -8,13 +8,20 @@
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
       "env": [
         "DATABASE_URL",
+        "DIRECT_URL",
         "CLERK_SECRET_KEY",
         "ANTHROPIC_API_KEY",
         "OPENAI_API_KEY",
         "WHATSAPP_ACCESS_TOKEN",
         "WHATSAPP_PHONE_NUMBER_ID",
         "WHATSAPP_APP_SECRET",
-        "WHATSAPP_VERIFY_TOKEN"
+        "WHATSAPP_VERIFY_TOKEN",
+        "INNGEST_EVENT_KEY",
+        "INNGEST_SIGNING_KEY",
+        "NEXT_PUBLIC_SENTRY_DSN",
+        "SENTRY_AUTH_TOKEN",
+        "SENTRY_ORG",
+        "SENTRY_PROJECT"
       ]
     },
     "dev": {
@@ -35,6 +42,9 @@
       "persistent": true
     },
     "db:migrate": {
+      "cache": false
+    },
+    "db:deploy": {
       "cache": false
     }
   }
