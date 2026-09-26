@@ -16,6 +16,9 @@ export const whatsappMessageReceivedSchema = z.object({
 
 // Inngest v4 `eventType`: used both as the typed trigger in createFunction and to build
 // the validated payload sent with inngest.send() — a single source of truth for both sides.
-export const whatsappMessageReceived = eventType("whatsapp/message.received", {
+// Namespaced under "actus/" on purpose: agrodata (same Inngest account) uses
+// "whatsapp/message.received" too, and within one environment Inngest routes an event to
+// every matching function across apps. A unique name keeps the two bots from cross-firing.
+export const whatsappMessageReceived = eventType("actus/whatsapp.message.received", {
   schema: whatsappMessageReceivedSchema,
 });
