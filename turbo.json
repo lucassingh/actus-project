@@ -17,7 +17,11 @@
         "WHATSAPP_APP_SECRET",
         "WHATSAPP_VERIFY_TOKEN",
         "INNGEST_EVENT_KEY",
-        "INNGEST_SIGNING_KEY"
+        "INNGEST_SIGNING_KEY",
+        "NEXT_PUBLIC_SENTRY_DSN",
+        "SENTRY_AUTH_TOKEN",
+        "SENTRY_ORG",
+        "SENTRY_PROJECT"
       ]
     },
     "dev": {

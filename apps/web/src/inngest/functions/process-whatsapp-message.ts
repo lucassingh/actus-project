@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { inngest } from "../client";
 import { whatsappMessageReceived } from "../events";
 import { prisma } from "@/lib/prisma";
@@ -29,8 +30,17 @@ export const processWhatsAppMessage = inngest.createFunction(
     id: "process-whatsapp-message",
     retries: 3,
     triggers: [{ event: whatsappMessageReceived }],
-    onFailure: async ({ event }) => {
-      const { waId } = event.data.event.data;
+    onFailure: async ({ event, error }) => {
+      const { waId, webhookEventId } = event.data.event.data;
+      Sentry.captureException(error, {
+        tags: { flow: "whatsapp" },
+        extra: { waId, webhookEventId },
+      });
+      console.error("[whatsapp] message failed after retries", {
+        waId,
+        webhookEventId,
+        error: error?.message,
+      });
       try {
         await sendWhatsAppMessage(waId, PROCESSING_FAILED);
       } catch (err) {
