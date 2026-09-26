@@ -29,6 +29,12 @@ export const processWhatsAppMessage = inngest.createFunction(
   {
     id: "process-whatsapp-message",
     retries: 3,
+    // One message at a time per operator: keeps the conversation-history read/modify/write
+    // from racing when someone fires several messages at once.
+    concurrency: { limit: 1, key: "event.data.waId" },
+    // Cost/abuse guard: cap how many messages one operator can drive per minute. Excess is
+    // queued (not dropped), so a legit burst just slows down.
+    throttle: { limit: 15, period: "60s", key: "event.data.waId" },
     triggers: [{ event: whatsappMessageReceived }],
     onFailure: async ({ event, error }) => {
       const { waId, webhookEventId } = event.data.event.data;
@@ -64,8 +70,8 @@ export const processWhatsAppMessage = inngest.createFunction(
     // Media download + agent run happen in one step so the base64 payload never crosses
     // Inngest's serialized step state, and a resend retry below won't re-run this.
     const reply = await step.run("process-agent-message", async () => {
-      const input = await buildAgentInput({ messageType, textBody, mediaId, mediaMimeType });
-      if (!input) return UNSUPPORTED;
+      const built = await buildAgentInput({ messageType, textBody, mediaId, mediaMimeType });
+      if ("reject" in built) return built.reject;
 
       const activeEvent = await prisma.event.findFirst({
         where: {
@@ -78,7 +84,7 @@ export const processWhatsAppMessage = inngest.createFunction(
       });
 
       const result = await processAgentMessage(
-        { ...input, eventId: activeEvent?.id },
+        { ...built.input, eventId: activeEvent?.id },
         { userId: user.id, tenantId: user.tenantId }
       );
       return result.response;
@@ -91,24 +97,40 @@ export const processWhatsAppMessage = inngest.createFunction(
   }
 );
 
+const SUPPORTED_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024; // Claude vision is happiest under ~5 MB per image
+const AUDIO_MAX_BYTES = 16 * 1024 * 1024; // WhatsApp caps voice notes; Whisper accepts up to 25 MB
+
+type BuiltInput = { input: AgentMessageRequest } | { reject: string };
+
 async function buildAgentInput(msg: {
   messageType: string;
   textBody?: string;
   mediaId?: string;
   mediaMimeType?: string;
-}): Promise<AgentMessageRequest | null> {
+}): Promise<BuiltInput> {
   if (msg.messageType === "text") {
-    return msg.textBody ? { messageType: "text", content: msg.textBody } : null;
+    return msg.textBody ? { input: { messageType: "text", content: msg.textBody } } : { reject: UNSUPPORTED };
   }
 
   if ((msg.messageType === "audio" || msg.messageType === "image") && msg.mediaId) {
     const base64 = await downloadWhatsAppMedia(msg.mediaId);
-    return {
-      messageType: msg.messageType as MessageType,
-      file: base64,
-      fileMimeType: (msg.mediaMimeType ?? "").split(";")[0].trim(),
-    };
+    const bytes = Math.floor((base64.length * 3) / 4); // approx decoded size from base64 length
+    const mime = (msg.mediaMimeType ?? "").split(";")[0].trim();
+
+    if (msg.messageType === "image") {
+      if (!SUPPORTED_IMAGE_MIME.has(mime)) {
+        return { reject: "Formato de imagen no soportado. Mandá una foto JPG, PNG o WEBP." };
+      }
+      if (bytes > IMAGE_MAX_BYTES) {
+        return { reject: "La imagen es muy grande (máx 5 MB). Mandá una más liviana." };
+      }
+    } else if (bytes > AUDIO_MAX_BYTES) {
+      return { reject: "El audio es muy largo (máx 16 MB). Mandá uno más corto." };
+    }
+
+    return { input: { messageType: msg.messageType as MessageType, file: base64, fileMimeType: mime } };
   }
 
-  return null;
+  return { reject: UNSUPPORTED };
 }

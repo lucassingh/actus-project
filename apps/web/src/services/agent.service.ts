@@ -13,6 +13,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const AGENT_MODEL = "claude-haiku-4-5-20251001";
 const MAX_HISTORY_TURNS = 10; // last N user+assistant turns sent to Claude
+const MAX_EVENT_MESSAGES = 40; // hard cap on stored user+assistant messages per event
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main entry point
@@ -30,11 +31,19 @@ export async function processAgentMessage(
   //    incident instead of a placeholder.
   const event = await resolveEvent(input, context, userText);
 
-  // 3. Get RAG context from knowledge base
-  const ragContext = await getRAGContext(userText, context.tenantId);
-
-  // 4. Build conversation history from the event
+  // 3. Cap the conversation length to bound token cost — stop before RAG + Claude.
   const history = buildHistory(event.conversationHistory as ConversationHistoryJson | null);
+  if (history.messages.length >= MAX_EVENT_MESSAGES) {
+    return {
+      response:
+        "Este incidente ya acumuló muchos mensajes. Cerralo y abrí uno nuevo para seguir con este tema.",
+      eventId: event.id,
+      eventUpdate: null,
+    };
+  }
+
+  // 4. Get RAG context from knowledge base
+  const ragContext = await getRAGContext(userText, context.tenantId);
 
   // 5. Call Claude
   const tenant = await prisma.tenant.findUnique({
