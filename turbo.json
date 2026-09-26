@@ -8,6 +8,7 @@
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
       "env": [
         "DATABASE_URL",
+        "DIRECT_URL",
         "CLERK_SECRET_KEY",
         "ANTHROPIC_API_KEY",
         "OPENAI_API_KEY",
@@ -35,6 +36,9 @@
       "persistent": true
     },
     "db:migrate": {
+      "cache": false
+    },
+    "db:deploy": {
       "cache": false
     }
   }
