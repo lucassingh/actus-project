@@ -1,6 +1,6 @@
 # UI — Landing restyle plan
 
-Status: **plan, not started**. Scope: the public landing served by `apps/web` at `/`
+Status: **phases 1-2 done** (foundations, navbar, hero) on branch `ui-landing-restyle`. Scope: the public landing served by `apps/web` at `/`
 (`src/app/page.tsx`). The dashboard gets its own plan in [`../ui-dashboard.md`](../ui-dashboard.md).
 
 ## Goal
@@ -9,6 +9,10 @@ A complete visual reset, not a polish pass. The current landing reads as amateur
 "friendly" type (Baloo + Nunito), a mix of Aceternity / Magic UI snippets with no shared
 language, and too many competing effects. The target is an industrial-B2B product that looks
 serious and premium, built on one component source (React Bits) adapted to the Actus brand.
+
+Design context lives in [`PRODUCT.md`](../../../../PRODUCT.md) (users, personality, anti-references).
+Design read: B2B industrial landing for maintenance/plant managers, technical and precise with a
+visible AI layer, Linear/Vercel-style restraint. **Dark theme** on navy-tinted near-blacks.
 
 Rule for every section: **current component → is there a React Bits equivalent? → yes: replace
 it and adapt it to brand colors + fonts / no: rebuild it on the new foundations.**
@@ -32,13 +36,13 @@ it and adapt it to brand colors + fonts / no: rebuild it on the new foundations.
 - Type scale (desktop → mobile): H1 72→40, H2 48→32, H3 28→22, body 18→16, small 14.
 - The dashboard will use the same pair (see `ui-dashboard.md`).
 
-### Color tokens — decision needed
+### Color tokens (decided: logo colors)
 
 The logo / favicon use **navy `#242F5B` + orange `#EA580E`** (`src/app/icon.svg`), but the site
 tokens are **`#0A2463` + `#F97316`** (`globals.css`, `src/config/theme.ts`). The two blues and
 two oranges are visibly different. Pick one set and make it the single source of truth:
 
-- **Recommended:** align the site to the logo (`#242F5B` / `#EA580E`) and derive the light/dark
+- **Done:** the site is aligned to the logo (`#242F5B` / `#EA580E`) and derive the light/dark
   shades from them. The dashboard mockups already lean towards that navy.
 - `src/config/theme.ts` duplicates the CSS tokens in JS — reduce it to what WebGL/canvas
   components need (they take hex/RGB props, not CSS variables).
@@ -223,19 +227,27 @@ each deletion — the dashboard may import some of them.
 
 Each phase is one PR-sized step, reviewed on the Vercel preview before moving on.
 
-1. **Foundations:** fonts, color tokens (after the decision), React Bits folder + deps.
-2. **Navbar + Hero** — the first impression; validates the whole direction.
+1. ~~**Foundations:** fonts, color tokens, React Bits folder + deps.~~ Done.
+2. ~~**Navbar + Hero**~~ Done: `CardNav` + `SplitText` + `DotGrid` in `src/components/reactbits/`.
+   "Agendar demo" points to `#contacto` until the contact backend exists.
 3. **ProductDefinition + ProblemSection.**
 4. **SolutionSection + dashboard stack + Operators.**
 5. **FAQ + Contact + Footer** (+ copy review, contact backend decision).
 6. **Cleanup** of old components and dependencies; Lighthouse + accessibility pass.
 
-## 5. Open decisions
+## 5. Decisions
 
-1. **Brand colors:** align to the logo (`#242F5B` / `#EA580E`) or keep the current tokens?
-2. **Primary CTA:** today the main button everywhere is "Iniciar sesión". A marketing landing
-   usually leads with "Agendar demo" / "Hablar con nosotros", with login as secondary. Which?
-3. **Hero background:** SoftAurora vs Grainient vs DotGrid — prototype and choose.
-4. **FAQ claims:** which answers stay (see 2.8).
-5. **Contact form backend:** email (Resend), DB, or WhatsApp link.
-6. **Pricing section:** show it or delete it.
+Resolved (2026-09-24):
+- Brand colors: the logo's `#242F5B` / `#EA580E`, applied to all tokens and hardcoded values.
+- Theme: dark landing on the `ink-*` scale (`globals.css`). Orange text passes AA on it (~5.4:1);
+  it does not on white (~3.6:1), so on light surfaces orange is for large text and accents only.
+- Primary CTA: **"Agendar demo"** (nav + hero + closing), "Iniciar sesión" is secondary.
+- Personality: technological + industrial/precise. Reference: Linear / Vercel.
+- Hero background: **DotGrid** (adapted: paused off-screen, static under reduced motion).
+- Inter + lucide-react stay by explicit choice, although the design skills discourage them as defaults.
+
+Still open:
+
+1. **FAQ claims:** which answers stay (see 2.8).
+2. **Contact form backend:** email (Resend), DB, or WhatsApp link.
+3. **Pricing section:** show it or delete it.

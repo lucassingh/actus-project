@@ -4,8 +4,6 @@ import { cn } from "@/lib/utils";
 import { theme } from "@/config/theme";
 import { motion } from "framer-motion";
 import { BorderBeam } from "@/components/ui/border-beam";
-import { DottedGlowBackground } from "@/components/ui/dotted-glow-background";
-import { DotPattern } from "@/components/ui/dot-pattern";
 import AnimatedWorkflow from "@/components/animated-assets/AnimatedWorkflow";
 import { BrainSVG } from "@/components/animated-assets/BrainSVG";
 import { LinkSVG } from "@/components/animated-assets/LinkSVG";
@@ -74,12 +72,6 @@ export function ProblemSection() {
                     className="relative w-full py-24"
                     style={{ backgroundColor: '#fefeffff' }}
                 >
-                    <DotPattern
-                        className="opacity-40 [mask-image:radial-gradient(900px_circle_at_center,white,transparent)]"
-                        width={20}
-                        height={20}
-                        glow
-                    />
 
                     {/* Título y descripción - OCULTOS EN MOBILE */}
                     <div className="max-w-6xl mx-auto px-4 mb-16 hidden md:block">
@@ -182,19 +174,16 @@ const ProblemCardHeader = ({ type, center, large }: { type: "brain" | "link" | "
         large ? "h-72" : "h-60",
         center ? "justify-center" : "justify-start"
     )}>
-        <DottedGlowBackground
+        <div
+            aria-hidden="true"
             className={cn(
+                "absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.08)_0.8px,transparent_0.8px)] [background-size:14px_14px]",
                 center
                     ? "[mask-image:radial-gradient(circle_at_center,transparent_18%,black_60%)]"
                     : large
                         ? "[mask-image:radial-gradient(circle_at_25%_center,transparent_25%,black_60%)]"
                         : "[mask-image:radial-gradient(circle_at_20%_center,transparent_20%,black_60%)]"
             )}
-            color="rgba(255, 255, 255, 0.08)"
-            glowColor={theme.colors.accent}
-            gap={14}
-            radius={0.7}
-            opacity={1}
         />
         <div className={cn(
             "relative z-10 w-full h-full flex items-center",

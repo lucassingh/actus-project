@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Baloo_Bhaina_2, Nunito } from "next/font/google";
+import { Montserrat, Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
-const baloo = Baloo_Bhaina_2({
-  variable: "--font-baloo",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin"],
-  weight: ["600"],
+  weight: ["700", "800", "900"],
+  display: "swap",
 });
 
-const nunito = Nunito({
-  variable: "--font-nunito",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -22,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
-      <html lang="es" className={`${baloo.variable} ${nunito.variable} h-full antialiased`}>
+      <html lang="es" className={`${montserrat.variable} ${inter.variable} h-full antialiased`}>
         <body className="min-h-full">{children}</body>
       </html>
     </ClerkProvider>

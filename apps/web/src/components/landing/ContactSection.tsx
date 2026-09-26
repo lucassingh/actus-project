@@ -15,7 +15,7 @@ export const ContactSection = () => {
     };
 
     return (
-        <section className="relative py-32 px-4 overflow-hidden bg-[#0a2463]" id="contacto">
+        <section className="relative py-32 px-4 overflow-hidden bg-[#242F5B]" id="contacto">
             {/* Background Decorative Elements id de contacto */}
             <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden">
                 {/* Dotted Glow Background (Aceternity style) */}

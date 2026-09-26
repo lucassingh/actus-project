@@ -4,7 +4,7 @@ import { Zap, ArrowLeft } from "lucide-react";
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-[#0A2463] via-[#0d2e7a] to-[#051e41] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-linear-to-br from-[#242F5B] via-[#2B3870] to-[#161D3A] flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background grid */}
       <div
         className="absolute inset-0 opacity-10"
@@ -15,7 +15,7 @@ export default function SignInPage() {
         }}
       />
       {/* Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-[#F97316] rounded-full opacity-10 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-[#EA580E] rounded-full opacity-10 blur-3xl pointer-events-none" />
 
       <div className="relative w-full max-w-md flex flex-col items-center">
         {/* Back link */}
@@ -31,7 +31,7 @@ export default function SignInPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center gap-2.5 mb-4">
             <div className="w-11 h-11 bg-white/10 border border-white/20 rounded-xl flex items-center justify-center">
-              <Zap className="w-6 h-6 text-[#F97316]" fill="#F97316" />
+              <Zap className="w-6 h-6 text-[#EA580E]" fill="#EA580E" />
             </div>
             <span className="text-3xl font-bold text-white">Actus</span>
           </div>
@@ -42,7 +42,7 @@ export default function SignInPage() {
         <SignIn
           appearance={{
             variables: {
-              colorPrimary: "#0A2463",
+              colorPrimary: "#242F5B",
               colorBackground: "#ffffff",
               colorDanger: "#EF4444",
               borderRadius: "0.75rem",
@@ -51,14 +51,14 @@ export default function SignInPage() {
             },
             elements: {
               card: "shadow-2xl border-0 rounded-2xl",
-              headerTitle: "text-xl font-bold text-[#0A2463]",
+              headerTitle: "text-xl font-bold text-[#242F5B]",
               headerSubtitle: "text-[#5A6B7C] text-sm",
               formButtonPrimary:
-                "bg-[#0A2463] hover:bg-[#051e41] text-white font-semibold rounded-xl py-2.5 transition-colors",
+                "bg-[#242F5B] hover:bg-[#161D3A] text-white font-semibold rounded-xl py-2.5 transition-colors",
               formFieldInput:
-                "border-gray-200 focus:border-[#0A2463] focus:ring-[#0A2463]/20 rounded-xl",
-              footerActionLink: "text-[#0A2463] hover:text-[#051e41] font-semibold",
-              identityPreviewEditButton: "text-[#0A2463]",
+                "border-gray-200 focus:border-[#242F5B] focus:ring-[#242F5B]/20 rounded-xl",
+              footerActionLink: "text-[#242F5B] hover:text-[#161D3A] font-semibold",
+              identityPreviewEditButton: "text-[#242F5B]",
               dividerLine: "bg-gray-100",
               socialButtonsBlockButton:
                 "border-gray-200 hover:bg-gray-50 rounded-xl font-medium",
@@ -69,7 +69,7 @@ export default function SignInPage() {
 
         <p className="mt-6 text-blue-400 text-xs text-center">
           ¿No tenés cuenta?{" "}
-          <Link href="/sign-up" className="text-[#F97316] hover:text-orange-300 font-semibold transition-colors">
+          <Link href="/sign-up" className="text-[#EA580E] hover:text-orange-300 font-semibold transition-colors">
             Registrate gratis
           </Link>
         </p>

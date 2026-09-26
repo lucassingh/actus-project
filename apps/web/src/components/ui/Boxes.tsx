@@ -12,7 +12,7 @@ interface BoxesProps {
 
 export const Boxes = ({
     className,
-    boxColor = "#F97316", // Default to accent color
+    boxColor = "#EA580E", // Default to accent color
     background = "transparent"
 }: BoxesProps) => {
     const rows = new Array(150).fill(1);
