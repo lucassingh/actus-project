@@ -262,13 +262,20 @@ Estas dos cosas se hacen **una sola vez**, en la primera vez que promovemos `dev
 - Local (`.env.local`) apunta a `develop`.
 - Vercel: `DATABASE_URL`/`DIRECT_URL` separadas por entorno; Preview de `develop` deployando OK.
 - Prisma: migraciones inicializadas con baseline `0_init` (aplicado en ambas bases).
-- git: rama `develop` creada y pusheada; `main` = prod intacta.
+- git: rama `develop` creada y pusheada; `main` = prod intacta. Branch protection en `main` activa.
+- Bot (auditoría) en `develop`: B0 fix RAG + títulos · B1 webhook durable con Inngest ·
+  B2 Sentry (DSN-gated) · B3 rate limits + tope de mensajes por evento + validación de media.
 
 **Pendiente:**
-- Primera promoción `develop → main` (lleva a prod el fix del bot + el setup de migraciones).
-- En esa promoción: activar Build Command con `migrate deploy` (§10).
-- Branch protection en `main` (§10).
+- **Primera promoción `develop → main`** — lleva a prod todo lo anterior. En esa promoción:
+  1. Activar Build Command de Vercel `npm run db:deploy && npm run build` (§10).
+  2. Inngest cloud: crear/sincronizar la app de Actus y cargar `INNGEST_EVENT_KEY` +
+     `INNGEST_SIGNING_KEY` en Vercel (Production; Preview si se quiere test en la nube).
+  3. Sentry: cargar `NEXT_PUBLIC_SENTRY_DSN` en Vercel (Production) para que capture errores.
+  4. Verificar en prod: WhatsApp real → run en el dashboard de Inngest → respuesta al operador.
 - Clerk instancia Production (cuando haya dominio, §11).
+- Opcional (B4): salida estructurada con tool-use (título/resumen del incidente más robusto que
+  el bloque `[[META|...]]`) + página de métricas de negocio sobre Postgres.
 
 ---
 
