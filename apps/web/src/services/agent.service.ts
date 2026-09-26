@@ -22,11 +22,13 @@ export async function processAgentMessage(
   input: AgentMessageRequest,
   context: { userId: number; tenantId: number }
 ): Promise<AgentMessageResponse> {
-  // 1. Resolve or create the event
-  const event = await resolveEvent(input, context);
-
-  // 2. Process input (text / audio / image → text)
+  // 1. Process input (text / audio / image → text)
   const userText = await extractText(input);
+
+  // 2. Resolve or create the event — a newly created event captures this first message
+  //    as its problem statement, so the KB embedding and the dashboard reflect the real
+  //    incident instead of a placeholder.
+  const event = await resolveEvent(input, context, userText);
 
   // 3. Get RAG context from knowledge base
   const ragContext = await getRAGContext(userText, context.tenantId);
@@ -77,7 +79,8 @@ export async function processAgentMessage(
 
 async function resolveEvent(
   input: AgentMessageRequest,
-  context: { userId: number; tenantId: number }
+  context: { userId: number; tenantId: number },
+  problemText: string
 ) {
   if (input.eventId) {
     const event = await prisma.event.findFirst({
@@ -87,17 +90,30 @@ async function resolveEvent(
     return event;
   }
 
-  // Create a new draft event
+  // Create a new draft event. The operator's first message is the incident's problem —
+  // persist it as problemContent (used to build the KB embedding on resolution) and as a
+  // human-readable title for the supervisor dashboard.
   return prisma.event.create({
     data: {
       tenantId: context.tenantId,
       creatorId: context.userId,
-      title: "New incident",
+      title: deriveTitle(problemText),
+      problemContent: problemText,
       status: "DRAFT",
       contentType: input.messageType === "text" ? "TEXT" : input.messageType === "audio" ? "AUDIO" : "IMAGE",
       conversationHistory: { messages: [] },
     },
   });
+}
+
+// A concise, single-line title from the operator's first message, for the dashboard list.
+// B4 can upgrade this to a Claude-generated title; a clean truncation is enough here and
+// costs no extra API call.
+function deriveTitle(text: string): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return "Incidente sin descripción";
+  const MAX = 70;
+  return clean.length <= MAX ? clean : clean.slice(0, MAX).trimEnd() + "…";
 }
 
 async function extractText(input: AgentMessageRequest): Promise<string> {
@@ -343,7 +359,7 @@ async function persistConversation(
           createKBEntryWithEmbedding({
             tenantId: event.tenantId,
             eventId,
-            problemText: event.problemContent ?? "Incident",
+            problemText: event.problemContent ?? "Incidente",
             solutionText: lastAssistant.content,
           }).catch((err) => console.error("[KB creation failed]", err));
         }
