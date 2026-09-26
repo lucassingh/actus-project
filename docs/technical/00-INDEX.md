@@ -10,5 +10,6 @@
 | 06 | [06-ENVIRONMENTS-and-workflow.md](06-ENVIRONMENTS-and-workflow.md) | Prod/develop/local environments, git flow, migrations, prod→develop data sync |
 | 07 | [07-IMPLEMENTATION-plan.md](07-IMPLEMENTATION-plan.md) | Point-in-time gap analysis / backlog snapshot (2026-06-29) |
 | 08 | [08-WHATSAPP-integration.md](08-WHATSAPP-integration.md) | WhatsApp webhook, System User token, sandbox gotchas |
+| 09 | [09-INFRA-PLAYBOOK.md](09-INFRA-PLAYBOOK.md) | Replicable multi-env infra setup (Neon/Vercel/Clerk/Inngest/Sentry) + gotchas |
 | UI | [UI/landing/ui-landing.md](UI/landing/ui-landing.md) | Landing restyle plan: fonts, colors, React Bits per section |
 | UI | [UI/ui-dashboard.md](UI/ui-dashboard.md) | Dashboard restyle plan (pending) |
