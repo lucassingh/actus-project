@@ -36,15 +36,14 @@ export function Footer() {
       <div className="relative z-10 mx-auto max-w-6xl px-5 pt-20 md:px-8">
         <div className="grid gap-10 md:grid-cols-[1fr_1.6fr] md:gap-12">
           {/* Branding */}
-          <div className="flex flex-col">
+          <div className="flex flex-col items-start">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logos/logo-bg-black.svg" alt="Actus" className="h-7 w-auto" />
-            <p className="mt-6 max-w-xs font-heading text-lg font-bold leading-snug text-ink-100">
+            <img src="/logos/logo-bg-black.svg" alt="Actus" className="h-11 w-auto" />
+            <p className="mt-7 max-w-xs font-heading text-lg font-bold leading-snug text-ink-100">
               El conocimiento de su planta,
               <br />
               siempre disponible.
             </p>
-            <p className="mt-auto pt-10 text-sm text-ink-500">Mantenimiento industrial con IA · es-AR</p>
           </div>
 
           {/* Link columns in an outlined box */}
@@ -80,17 +79,18 @@ export function Footer() {
 
       </div>
 
-      {/* Large wordmark — in flow, full-bleed, uppercase + low opacity (not the logo lettering).
-          tracking-normal so the heavy letters never overlap (overlap + opacity looked muddy). */}
-      <div className="overflow-hidden px-[30px] pb-4 pt-16" aria-hidden="true">
-        <span className="block w-full select-none whitespace-nowrap text-center font-heading text-[clamp(4rem,22vw,20rem)] font-black uppercase leading-[0.82] tracking-normal text-white/[0.055]">
-          Actus
-        </span>
-      </div>
-
-      {/* Copyright — below the wordmark */}
-      <div className="mx-auto max-w-6xl px-5 md:px-8">
-        <div className="flex flex-col items-start justify-between gap-4 border-t border-ink-800 py-7 text-sm text-ink-500 sm:flex-row sm:items-center">
+      {/* Full-bleed block (outside the max-w container): giant wordmark + copyright, both the
+          same width with 30px side padding. tracking-normal so the heavy letters never overlap. */}
+      <div className="px-[30px] pt-16">
+        <div className="overflow-hidden">
+          <span
+            aria-hidden="true"
+            className="block w-full select-none whitespace-nowrap text-center font-heading text-[clamp(3.5rem,26vw,24rem)] font-black uppercase leading-[0.82] tracking-normal text-white/[0.06]"
+          >
+            Actus
+          </span>
+        </div>
+        <div className="mt-[30px] flex flex-col items-start justify-between gap-4 border-t border-ink-800 pb-[30px] pt-6 text-sm text-ink-500 sm:flex-row sm:items-center">
           <p>© {year} Actus. Todos los derechos reservados.</p>
           <a
             href="#home"

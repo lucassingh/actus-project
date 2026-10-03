@@ -133,7 +133,7 @@ export function ProblemSection() {
               <div className="relative mt-8 flex justify-center">
                 <a
                   href="#solucion"
-                  className="group inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-ink-950 transition-[transform,background-color] duration-200 ease-[var(--ease-out-expo)] hover:bg-accent-light active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                  className="group inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition-[transform,background-color] duration-200 ease-[var(--ease-out-expo)] hover:bg-accent-light active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 >
                   Ver cómo lo resolvemos
                   <ArrowRight

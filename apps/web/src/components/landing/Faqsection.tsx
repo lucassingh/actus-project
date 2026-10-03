@@ -168,7 +168,7 @@ export const Faqsection = () => {
 
             <a
               href="#contacto"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-ink-950 transition-[transform,background-color] duration-200 hover:bg-accent-light active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition-[transform,background-color] duration-200 hover:bg-accent-light active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
             >
               Agendar demo
               <ArrowRight className="h-4 w-4" aria-hidden="true" />

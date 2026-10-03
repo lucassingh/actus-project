@@ -189,7 +189,7 @@ export function ContactSection() {
               <button
                 type="submit"
                 disabled={pending}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-ink-950 transition-[transform,background-color,opacity] duration-200 hover:bg-accent-light active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition-[transform,background-color,opacity] duration-200 hover:bg-accent-light active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
               >
                 {pending ? "Enviando…" : "Agendar demo"}
                 {!pending && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
