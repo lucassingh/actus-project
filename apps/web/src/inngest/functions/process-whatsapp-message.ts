@@ -21,9 +21,9 @@ const PROCESSING_FAILED =
  * failure (Claude overloaded, Whisper timeout) is retried instead of silently dropping
  * the operator's message. `onFailure` notifies the operator once retries are exhausted.
  *
- * Known limitation: `process-agent-message` creates the Event internally, so a retry of
- * that step after a mid-way failure can create a duplicate Event. Acceptable trade-off
- * vs. losing the message; fine-grained idempotency is future work.
+ * Event creation is idempotent across retries: the inbound wamid is passed as
+ * `sourceMessageId`, and resolveEvent reuses the event with that id instead of creating a
+ * duplicate (see agent.service.ts).
  */
 export const processWhatsAppMessage = inngest.createFunction(
   {
@@ -55,7 +55,7 @@ export const processWhatsAppMessage = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
-    const { waId, messageType, textBody, mediaId, mediaMimeType } = event.data;
+    const { waId, webhookEventId, messageType, textBody, mediaId, mediaMimeType } = event.data;
 
     const user = await step.run("resolve-user", async () => {
       const u = await prisma.user.findUnique({ where: { phoneNumber: waId } });
@@ -85,7 +85,8 @@ export const processWhatsAppMessage = inngest.createFunction(
 
       const result = await processAgentMessage(
         { ...built.input, eventId: activeEvent?.id },
-        { userId: user.id, tenantId: user.tenantId }
+        // sourceMessageId (the wamid) makes event creation idempotent across step retries.
+        { userId: user.id, tenantId: user.tenantId, sourceMessageId: webhookEventId }
       );
       return result.response;
     });

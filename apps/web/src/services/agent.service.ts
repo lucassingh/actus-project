@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { generateEmbedding, generateEmbeddings, embeddingToSql } from "@/lib/embeddings";
 import { transcribeAudio } from "@/lib/transcription";
+import { UPDATE_EVENT_TOOL, parseEventUpdate } from "./agent-event-update";
 import type {
   AgentMessageRequest,
   AgentMessageResponse,
@@ -21,7 +22,7 @@ const MAX_EVENT_MESSAGES = 40; // hard cap on stored user+assistant messages per
 
 export async function processAgentMessage(
   input: AgentMessageRequest,
-  context: { userId: number; tenantId: number }
+  context: { userId: number; tenantId: number; sourceMessageId?: string }
 ): Promise<AgentMessageResponse> {
   // 1. Process input (text / audio / image → text)
   const userText = await extractText(input);
@@ -45,18 +46,16 @@ export async function processAgentMessage(
   // 4. Get RAG context from knowledge base
   const ragContext = await getRAGContext(userText, context.tenantId);
 
-  // 5. Call Claude
+  // 5. Call Claude — the reply text + the structured event update (via the update_event tool)
+  //    come back from a single call.
   const tenant = await prisma.tenant.findUnique({
     where: { id: context.tenantId },
     select: { name: true },
   });
   const systemPrompt = buildSystemPrompt(tenant?.name ?? "la planta", ragContext);
-  const claudeResponse = await callClaude(systemPrompt, history, userText);
+  const { reply: cleanResponse, eventUpdate } = await callClaude(systemPrompt, history, userText);
 
-  // 6. Extract structured event update from Claude response
-  const { cleanResponse, eventUpdate } = extractEventUpdate(claudeResponse);
-
-  // 7. Persist: append messages + apply event update
+  // 6. Persist: append messages + apply event update
   const newMessages: ConversationMessage[] = [
     {
       role: "user",
@@ -88,7 +87,7 @@ export async function processAgentMessage(
 
 async function resolveEvent(
   input: AgentMessageRequest,
-  context: { userId: number; tenantId: number },
+  context: { userId: number; tenantId: number; sourceMessageId?: string },
   problemText: string
 ) {
   if (input.eventId) {
@@ -97,6 +96,16 @@ async function resolveEvent(
     });
     if (!event) throw new Error("Event not found");
     return event;
+  }
+
+  // Idempotency: if a retried Inngest step already created an event for this inbound
+  // message, reuse it instead of creating a duplicate. (Covers the gap the active-event
+  // lookup misses when the first attempt created AND resolved the event before failing.)
+  if (context.sourceMessageId) {
+    const existing = await prisma.event.findUnique({
+      where: { sourceMessageId: context.sourceMessageId },
+    });
+    if (existing) return existing;
   }
 
   // Create a new draft event. The operator's first message is the incident's problem —
@@ -111,6 +120,7 @@ async function resolveEvent(
       status: "DRAFT",
       contentType: input.messageType === "text" ? "TEXT" : input.messageType === "audio" ? "AUDIO" : "IMAGE",
       conversationHistory: { messages: [] },
+      sourceMessageId: context.sourceMessageId ?? null,
     },
   });
 }
@@ -316,22 +326,22 @@ CÓMO RESPONDER UN INCIDENTE:
 - Si falta información, pedí exactamente lo que necesitás: nombre/código de máquina, sector/ubicación, síntoma específico
 - Siempre proponé 2-3 acciones concretas numeradas, ordenadas por probabilidad de éxito
 - Si usás la DOCUMENTACIÓN DE PLANTA, citá la página cuando esté disponible (ej: "según el manual, pág. 12")
-- Cuando el operador confirme que una opción funcionó (ej: "Funcionó la opción 1", "anduvo", "se resolvió"), respondé confirmando la resolución y marcá el evento como resuelto
+- Cuando el operador confirme que una opción funcionó (ej: "Funcionó la opción 1", "anduvo", "se resolvió"), respondé confirmando la resolución
 
-BLOQUE META — incluilo AL FINAL de cada respuesta, nunca lo muestres al operador:
-[[META|status:STATUS|priority:PRIORITY|machine:NOMBRE_MAQUINA|resolved:BOOL]]
-- status: draft | open | in_progress | resolved
-- priority: low | medium | high | critical
-- machine: nombre o código de la máquina (null si no se sabe)
-- resolved: true solo cuando el operador confirmó que la solución funcionó
-Ejemplo: [[META|status:in_progress|priority:high|machine:COMP-005|resolved:false]]`;
+ESTADO DEL INCIDENTE:
+- En CADA respuesta, además del texto para el operador, llamá a la herramienta "update_event" con tu mejor evaluación del estado actual del incidente (status, prioridad, máquina si se sabe, y resolved).
+- Poné resolved=true SOLO cuando el operador haya confirmado que la solución funcionó.
+- La herramienta es para uso interno del sistema: nunca menciones "update_event" ni el estado estructurado en el texto que ve el operador.`;
 }
+
+const EMPTY_REPLY_FALLBACK =
+  "Recibí tu mensaje. ¿Podés darme un poco más de detalle para ayudarte mejor?";
 
 async function callClaude(
   systemPrompt: string,
   history: { messages: ConversationMessage[] },
   userMessage: string
-): Promise<string> {
+): Promise<{ reply: string; eventUpdate: EventUpdate | undefined }> {
   const recentMessages = history.messages.slice(-MAX_HISTORY_TURNS * 2);
 
   const claudeMessages: Anthropic.MessageParam[] = [
@@ -347,39 +357,20 @@ async function callClaude(
     max_tokens: 1024,
     system: systemPrompt,
     messages: claudeMessages,
+    tools: [UPDATE_EVENT_TOOL],
   });
 
-  const block = response.content[0];
-  return block.type === "text" ? block.text : "";
-}
-
-function extractEventUpdate(rawResponse: string): {
-  cleanResponse: string;
-  eventUpdate: EventUpdate | undefined;
-} {
-  const metaRegex = /\[\[META\|(.*?)\]\]/;
-  const match = rawResponse.match(metaRegex);
-
-  if (!match) {
-    return { cleanResponse: rawResponse.trim(), eventUpdate: undefined };
+  let reply = "";
+  let eventUpdate: EventUpdate | undefined;
+  for (const block of response.content) {
+    if (block.type === "text") {
+      reply += block.text;
+    } else if (block.type === "tool_use" && block.name === "update_event") {
+      eventUpdate = parseEventUpdate(block.input);
+    }
   }
 
-  const cleanResponse = rawResponse.replace(match[0], "").trim();
-  const pairs = match[1].split("|");
-  const meta: Record<string, string> = {};
-
-  for (const pair of pairs) {
-    const [key, value] = pair.split(":");
-    if (key && value && value !== "null") meta[key.trim()] = value.trim();
-  }
-
-  const eventUpdate: EventUpdate = {};
-  if (meta.status) eventUpdate.status = meta.status.toUpperCase() as EventUpdate["status"];
-  if (meta.priority) eventUpdate.priority = meta.priority.toUpperCase() as EventUpdate["priority"];
-  if (meta.machine) eventUpdate.machineName = meta.machine;
-  if (meta.resolved === "true") eventUpdate.resolved = true;
-
-  return { cleanResponse, eventUpdate };
+  return { reply: reply.trim() || EMPTY_REPLY_FALLBACK, eventUpdate };
 }
 
 async function persistConversation(
