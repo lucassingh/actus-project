@@ -13,10 +13,20 @@ Essen is an industrial plant in Argentina. First pilot client for Actus.
 
 ## Pilot scope
 
-- Mobile app for operators (Expo React Native)
+- **WhatsApp** for operators (no app to install — report by messaging the Actus number)
 - Agent chat: text, audio, image incident reporting
 - Supervisor dashboard: event monitoring and operator management
-- Knowledge base: auto-built from resolved incidents
+- Knowledge base: auto-built from resolved incidents + uploaded factory manuals
+
+## Modelo del piloto (decisión 2026-10-02)
+
+- **Sin pago automático (MercadoPago).** El piloto valida producto y saca KPIs, no monetiza.
+- **Alta manual:** el admin (Lucas) da de alta un **supervisor**; el supervisor da de alta a sus
+  **operarios** (pantalla `dashboard/operators/create`, por número de WhatsApp). Sin checkout.
+- El **pago automático** se implementa recién post-piloto, con KPIs y abriendo a público fuera de Essen.
+  Referencia de implementación: agrodata (`packages/core/src/billing`).
+- Bloqueante aparte para producción real: regularizar **monotributo** para completar la verificación de
+  empresa en Meta y salir del número sandbox de WhatsApp.
 
 ## Test users (dev/staging only — DO NOT commit to production)
 
