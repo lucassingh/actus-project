@@ -22,3 +22,15 @@ export const whatsappMessageReceivedSchema = z.object({
 export const whatsappMessageReceived = eventType("actus/whatsapp.message.received", {
   schema: whatsappMessageReceivedSchema,
 });
+
+// Fired after a factory-manual PDF is uploaded, parsed and chunked. Carries only the ids
+// (the chunk text already lives in the DB) so the event payload stays tiny. The
+// process-factory-doc function embeds the chunks durably. See factory-doc.service.ts.
+export const factoryDocUploadedSchema = z.object({
+  docId: z.number().int(),
+  tenantId: z.number().int(),
+});
+
+export const factoryDocUploaded = eventType("actus/factory-doc.uploaded", {
+  schema: factoryDocUploadedSchema,
+});

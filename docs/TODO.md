@@ -33,16 +33,22 @@ Estado al **2026-10-02** (post-auditoría). Arquitectura: **WhatsApp + dashboard
 
 ---
 
-## 🟠 P1 — Robustez del RAG de manuales (prioridad técnica #1)
+## 🟠 P1 — Robustez del RAG de manuales (prioridad técnica #1) — ✅ Etapa 2 (2026-10-03)
 
-Hoy el RAG de manuales es más demo que productivo (ver auditoría 2026-10-02):
+Reescrito el pipeline de ingesta + búsqueda (branch `etapa-2-rag-robustez`):
 
-- `MAX_CHUNKS = 80` **trunca manuales largos** — se indexa solo ~15-40% de un manual de 150-400 págs, y el resto se descarta en silencio.
-- **Sin OCR**: un PDF escaneado (foto de páginas) tira "no tiene texto extraíble".
-- **Chunking por conteo de palabras** rompe tablas (torques, códigos de error, repuestos) y procedimientos.
-- **Ingesta síncrona** en server action (80 embeddings en serie) → riesgo de timeout. Mover a **Inngest** (ya está en el stack) con progreso.
-- **Query = mensaje crudo del operario** (corto/coloquial) embebe mal contra el manual formal; umbral 0.70 alto; sin reescritura/HyDE ni **reranking**.
-- No se llena `pageNum` → el bot **no puede citar página**.
+- ✅ **Sin tope de chunks** — se quitó `MAX_CHUNKS = 80`; se indexa el documento completo.
+- ✅ **Chunking que respeta estructura** — `lib/chunking.ts` chunking por página, corta solo en límites de línea (las tablas de torques/códigos/repuestos quedan contiguas), con overlap. Reemplaza el flatten-a-una-línea + corte por palabras.
+- ✅ **`pageNum` poblado** — `lib/pdf.ts` extrae texto por página (pdf-parse v2); el bot ahora cita página.
+- ✅ **Ingesta durable en Inngest** — parseo+chunking síncronos (CPU, rápido); los embeddings (lo que daba timeout) se mueven a `process-factory-doc` en batches de 100, reintentables y reanudables. Estado del doc: PENDING→PROCESSING→INDEXED|FAILED, visible en el dashboard.
+- ✅ **Query mejorada** — reescritura HyDE-lite con Haiku (`expandQuery`), umbrales separados (KB 0.70 / docs 0.55) y over-fetch 10→top 5.
+- ✅ **Bug latente arreglado** — la SQL cruda de `getRAGContext` usaba columnas snake_case (`problem_embedding`, `doc_id`, `tenant_id`) que **no existen** (son camelCase citadas) → habría crasheado cada mensaje al cargar crédito OpenAI. También el `UPDATE knowledge_base`.
+
+**Diferido con seam listo (decisión del usuario, 2026-10-03):**
+- ⬜ **OCR** para PDFs escaneados — hoy se rechazan prolijamente (`ScannedPdfError` en `lib/pdf.ts`, ahí engancha Claude vision / OCR cloud). Para el piloto Essen: subir PDFs con texto seleccionable.
+- ⬜ **Reranking** — seam `rerankDocChunks()` en `agent.service.ts` (hoy identidad). Para el corpus chico del piloto alcanza con chunking + query expansion + over-fetch.
+
+> **Pendiente operativo:** correr la migración `20261003000000_factory_doc_ingestion_status` (`npm run db:deploy`) — agrega `status` y `error` a `factory_docs`.
 
 ## 🟠 P2 — Robustez del agente
 

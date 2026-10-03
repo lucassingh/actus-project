@@ -197,6 +197,12 @@ model FactoryDoc {
   pageCount   Int?
   chunkCount  Int      @default(0)
   isProcessed Boolean  @default(false)
+  // Ingestion lifecycle: PENDING → PROCESSING → INDEXED | FAILED.
+  // Parsing + chunking happen synchronously on upload; embedding is durable work
+  // handed to Inngest (process-factory-doc), so a doc can sit in PROCESSING for a bit.
+  // `error` carries a human-readable reason when status = FAILED (e.g. scanned PDF).
+  status      String   @default("PENDING")
+  error       String?
   createdAt   DateTime @default(now())
 
   tenant Tenant          @relation(fields: [tenantId], references: [id])
