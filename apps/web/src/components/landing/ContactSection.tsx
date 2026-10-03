@@ -1,223 +1,207 @@
-
 "use client";
-import React from "react";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { Mail, Phone, MapPin, Send, Globe, MessageSquare } from "lucide-react";
 
-export const ContactSection = () => {
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        console.log("Form submitted");
-    };
+import { useActionState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { ArrowRight, Check } from "lucide-react";
+import { submitContact, type ContactState } from "@/app/actions/contact";
 
-    return (
-        <section className="relative py-32 px-4 overflow-hidden bg-[#242F5B]" id="contacto">
-            {/* Background Decorative Elements id de contacto */}
-            <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden">
-                {/* Dotted Glow Background (Aceternity style) */}
-                <div
-                    className="absolute inset-0 opacity-20"
-                    style={{
-                        backgroundImage: `radial-gradient(#ffffff 1.5px, transparent 1.5px)`,
-                        backgroundSize: '35px 35px',
-                        maskImage: 'radial-gradient(ellipse 60% 60% at 50% 50%, black, transparent)'
-                    }}
-                />
+const benefits = [
+  {
+    title: "Demo real, no un video",
+    body: "Le mostramos el bot resolviendo un caso parecido a los de su planta.",
+  },
+  {
+    title: "Diagnóstico de su caso",
+    body: "Charlamos sobre sus equipos, sus manuales y dónde se le escapa el conocimiento.",
+  },
+  {
+    title: "Sin compromiso",
+    body: "Una conversación, no un contrato. Usted decide si quiere seguir.",
+  },
+  {
+    title: "Piloto a medida",
+    body: "Si encaja, armamos un piloto con sus operarios y sus máquinas reales.",
+  },
+];
 
-                {/* Large Background Glows */}
-                <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-accent/20 rounded-full blur-[120px] opacity-40" />
-                <div className="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] bg-primary/30 rounded-full blur-[120px] opacity-40" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[60%] bg-accent/10 rounded-full blur-[140px] opacity-20" />
-            </div>
+const labelCls = "mb-1.5 block text-[13px] font-medium text-ink-300";
+const fieldCls =
+  "w-full rounded-lg border border-ink-700 bg-ink-950 px-3.5 py-2.5 text-[15px] text-ink-100 placeholder:text-ink-500 transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40";
 
-            <div className="max-w-7xl mx-auto relative z-10">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+const initialState: ContactState = { status: "idle" };
 
-                    {/* Left Column: Content and Info Cards */}
-                    <div className="flex flex-col space-y-12">
-                        <motion.div
-                            initial={{ opacity: 0, x: -50 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.8 }}
-                        >
-                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 border border-accent/20 mb-6 backdrop-blur-sm">
-                                <MessageSquare size={14} className="text-accent" />
-                                <span className="text-xs font-bold text-accent uppercase tracking-widest">Hablemos</span>
-                            </div>
-                            <h2 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-6 leading-[0.95]">
-                                Lleve su planta al <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-orange-500">
-                                    siguiente nivel.
-                                </span>
-                            </h2>
-                            <p className="text-xl text-slate-400 max-w-lg leading-relaxed mb-10">
-                                Estamos listos para ayudarle a digitalizar el conocimiento técnico de su empresa.
-                                Contáctenos hoy y descubra el potencial de <span className="text-white font-medium">Actus IA.</span>
-                            </p>
-                        </motion.div>
+export function ContactSection() {
+  const reduce = useReducedMotion();
+  const [state, formAction, pending] = useActionState(submitContact, initialState);
 
-                        {/* Contact Info Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {[
-                                {
-                                    icon: Mail,
-                                    label: "Escríbanos",
-                                    value: "hola@actus.ai",
-                                    color: "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                                },
-                                {
-                                    icon: Phone,
-                                    label: "Llámenos",
-                                    value: "+54 9 11 1234 5678",
-                                    color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                },
-                                {
-                                    icon: MapPin,
-                                    label: "Ubicación",
-                                    value: "Buenos Aires, Argentina",
-                                    color: "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                                },
-                                {
-                                    icon: Globe,
-                                    label: "Redes",
-                                    value: "@actus_ia",
-                                    color: "bg-accent/10 text-accent border-accent/20"
-                                }
-                            ].map((info, i) => (
-                                <motion.div
-                                    key={i}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ duration: 0.5, delay: 0.3 + (i * 0.1) }}
-                                    className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md group hover:bg-white/10 transition-all duration-300"
-                                >
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 border transition-transform duration-300 group-hover:scale-110 ${info.color}`}>
-                                        <info.icon size={20} />
-                                    </div>
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{info.label}</p>
-                                    <p className="text-white font-medium">{info.value}</p>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </div>
+  return (
+    <section id="contacto" className="relative overflow-hidden bg-ink-950 py-28 md:py-36">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-[-10%] top-0 h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle,rgba(234,88,14,0.1),transparent_65%)]"
+      />
 
-                    {/* Right Column: Contact Form */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8, delay: 0.2 }}
-                        className="relative group lg:mt-0 mt-8"
-                    >
-                        {/* Decorative background glow for the form */}
-                        <div className="absolute -inset-1 bg-gradient-to-r from-accent/20 to-purple-500/20 rounded-[2.5rem] blur-2xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
+      <div className="relative mx-auto grid max-w-6xl gap-12 px-5 md:px-8 lg:grid-cols-2 lg:gap-16">
+        {/* Left — pitch + benefits */}
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 20 }}
+          whileInView={reduce ? {} : { opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <p className="font-heading text-sm font-semibold uppercase tracking-[0.2em] text-accent">
+            Agendar demo
+          </p>
+          <h2 className="mt-4 font-heading text-[clamp(2rem,4.5vw,3.5rem)] font-black leading-[1.05] tracking-tight text-white">
+            Veamos Actus funcionando <span className="text-accent">en su planta.</span>
+          </h2>
+          <p className="mt-5 max-w-md text-lg leading-relaxed text-ink-300">
+            Déjenos sus datos y coordinamos una demo. Le mostramos cómo captura el conocimiento de
+            su equipo y le damos un diagnóstico concreto para su planta.
+          </p>
 
-                        <div className="relative w-full bg-slate-900/40 p-8 md:p-12 rounded-[2.5rem] border border-white/10 backdrop-blur-2xl shadow-2xl">
-                            <form className="space-y-6" onSubmit={handleSubmit}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <LabelInputContainer>
-                                        <Label htmlFor="firstname" className="text-slate-300 text-xs font-bold uppercase tracking-widest ml-1">Nombre</Label>
-                                        <Input
-                                            id="firstname"
-                                            placeholder="Juan"
-                                            type="text"
-                                            className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 h-14 rounded-xl focus:ring-accent/50"
-                                        />
-                                    </LabelInputContainer>
-                                    <LabelInputContainer>
-                                        <Label htmlFor="lastname" className="text-slate-300 text-xs font-bold uppercase tracking-widest ml-1">Apellido</Label>
-                                        <Input
-                                            id="lastname"
-                                            placeholder="Pérez"
-                                            type="text"
-                                            className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 h-14 rounded-xl focus:ring-accent/50"
-                                        />
-                                    </LabelInputContainer>
-                                </div>
-
-                                <LabelInputContainer>
-                                    <Label htmlFor="email" className="text-slate-300 text-xs font-bold uppercase tracking-widest ml-1">Correo Electrónico</Label>
-                                    <Input
-                                        id="email"
-                                        placeholder="juan.perez@empresa.com"
-                                        type="email"
-                                        className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 h-14 rounded-xl focus:ring-accent/50"
-                                    />
-                                </LabelInputContainer>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <LabelInputContainer>
-                                        <Label htmlFor="company" className="text-slate-300 text-xs font-bold uppercase tracking-widest ml-1">Empresa</Label>
-                                        <Input
-                                            id="company"
-                                            placeholder="Nombre de su empresa"
-                                            type="text"
-                                            className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 h-14 rounded-xl focus:ring-accent/50"
-                                        />
-                                    </LabelInputContainer>
-                                    <LabelInputContainer>
-                                        <Label htmlFor="employees" className="text-slate-300 text-xs font-bold uppercase tracking-widest ml-1">Empleados</Label>
-                                        <select
-                                            id="employees"
-                                            defaultValue=""
-                                            className="flex h-14 w-full border border-white/10 bg-white/5 text-white shadow-input rounded-xl px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-[2px] focus-visible:ring-accent/50 transition duration-400 appearance-none cursor-pointer"
-                                        >
-                                            <option value="" disabled className="bg-slate-900">Seleccione una opción</option>
-                                            <option value="5" className="bg-slate-900">1 - 50</option>
-                                            <option value="10" className="bg-slate-900">51 - 200</option>
-                                            <option value="15" className="bg-slate-900">201 - 500</option>
-                                            <option value="other" className="bg-slate-900">500+</option>
-                                        </select>
-                                    </LabelInputContainer>
-                                </div>
-
-                                <LabelInputContainer>
-                                    <Label htmlFor="message" className="text-slate-300 text-xs font-bold uppercase tracking-widest ml-1">Consulta</Label>
-                                    <Textarea
-                                        id="message"
-                                        placeholder="¿En qué podemos ayudarle?"
-                                        className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 min-h-[120px] rounded-xl focus:ring-accent/50"
-                                    />
-                                </LabelInputContainer>
-
-                                <button
-                                    className="group/btn relative bg-accent w-full text-white font-bold h-14 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-[0_0_20px_rgba(234,88,14,0.3)] active:scale-[0.98] text-lg flex items-center justify-center gap-2"
-                                    type="submit"
-                                >
-                                    <span className="relative z-10">Enviar Mensaje</span>
-                                    <Send size={18} className="relative z-10 transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1" />
-                                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-accent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300" />
-                                </button>
-
-                                <p className="text-center text-xs text-slate-500 font-medium">
-                                    Al enviar, acepta nuestra <span className="text-slate-400 underline cursor-pointer">política de privacidad</span>.
-                                </p>
-                            </form>
-                        </div>
-                    </motion.div>
-
+          <ul className="mt-10 space-y-6">
+            {benefits.map((b) => (
+              <li key={b.title} className="flex gap-4">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+                <div>
+                  <p className="font-heading font-bold text-white">{b.title}</p>
+                  <p className="mt-1 text-[15px] leading-relaxed text-ink-400">{b.body}</p>
                 </div>
-            </div>
-        </section>
-    );
-};
+              </li>
+            ))}
+          </ul>
+        </motion.div>
 
-const LabelInputContainer = ({
-    children,
-    className,
-}: {
-    children: React.ReactNode;
-    className?: string;
-}) => {
-    return (
-        <div className={cn("flex flex-col space-y-2 w-full", className)}>
-            {children}
-        </div>
-    );
-};
+        {/* Right — form card */}
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 24 }}
+          whileInView={reduce ? {} : { opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-3xl border border-ink-700/60 bg-ink-900/60 p-6 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)] md:p-8"
+        >
+          {state.status === "success" ? (
+            <div className="flex min-h-[460px] flex-col items-center justify-center text-center">
+              <motion.div
+                initial={reduce ? false : { scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 260, damping: 18 }}
+                className="grid h-16 w-16 place-items-center rounded-full bg-accent/15 ring-1 ring-accent/30"
+              >
+                <Check className="h-8 w-8 text-accent" aria-hidden="true" />
+              </motion.div>
+              <h3 className="mt-6 font-heading text-2xl font-bold text-white">¡Mensaje enviado!</h3>
+              <p className="mt-3 max-w-sm text-ink-300">
+                Gracias por escribirnos. Le respondemos en el día para coordinar la demo.
+              </p>
+            </div>
+          ) : (
+            <form action={formAction} className="space-y-5">
+              {/* Honeypot (hidden from users) */}
+              <input
+                type="text"
+                name="company_url"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="absolute left-[-9999px] h-0 w-0 opacity-0"
+              />
+
+              <div>
+                <label htmlFor="email" className={labelCls}>
+                  Email de trabajo <span className="text-accent">*</span>
+                </label>
+                <input id="email" name="email" type="email" required placeholder="usted@empresa.com" className={fieldCls} />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="firstName" className={labelCls}>
+                    Nombre <span className="text-accent">*</span>
+                  </label>
+                  <input id="firstName" name="firstName" required placeholder="Juan" className={fieldCls} />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className={labelCls}>
+                    Apellido
+                  </label>
+                  <input id="lastName" name="lastName" placeholder="Pérez" className={fieldCls} />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="company" className={labelCls}>
+                  Empresa <span className="text-accent">*</span>
+                </label>
+                <input id="company" name="company" required placeholder="Su empresa" className={fieldCls} />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="jobTitle" className={labelCls}>
+                    Cargo
+                  </label>
+                  <input id="jobTitle" name="jobTitle" placeholder="Jefe de mantenimiento" className={fieldCls} />
+                </div>
+                <div>
+                  <label htmlFor="companySize" className={labelCls}>
+                    Tamaño de la planta
+                  </label>
+                  <select id="companySize" name="companySize" defaultValue="" className={`${fieldCls} appearance-none`}>
+                    <option value="" disabled>
+                      Seleccionar…
+                    </option>
+                    <option>1–10 operarios</option>
+                    <option>10–50 operarios</option>
+                    <option>50–200 operarios</option>
+                    <option>Más de 200 operarios</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="phone" className={labelCls}>
+                  Teléfono / WhatsApp
+                </label>
+                <input id="phone" name="phone" type="tel" placeholder="+54 9 ..." className={fieldCls} />
+              </div>
+
+              <div>
+                <label htmlFor="message" className={labelCls}>
+                  ¿Algo más que quiera contarnos?
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  rows={4}
+                  placeholder="Sus equipos, sus manuales, qué le gustaría resolver…"
+                  className={`${fieldCls} resize-none`}
+                />
+              </div>
+
+              {state.status === "error" && (
+                <p role="alert" className="text-sm text-red-400">
+                  {state.message}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={pending}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-ink-950 transition-[transform,background-color,opacity] duration-200 hover:bg-accent-light active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+              >
+                {pending ? "Enviando…" : "Agendar demo"}
+                {!pending && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+              </button>
+
+              <p className="text-center text-[12px] leading-relaxed text-ink-500">
+                Solo usamos sus datos para contactarlo sobre Actus. No compartimos nada con terceros.
+              </p>
+            </form>
+          )}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
