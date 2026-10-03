@@ -1,7 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ingestFactoryDocPdf, deleteFactoryDoc } from "@/services/factory-doc.service";
+import { createFactoryDoc, deleteFactoryDoc, markDocFailed } from "@/services/factory-doc.service";
+import { ScannedPdfError } from "@/lib/pdf";
+import { inngest } from "@/inngest/client";
+import { factoryDocUploaded } from "@/inngest/events";
 import { FileText, Upload, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Page, PageHeader, Card, CardHeader, CardFooter, Badge, EmptyState, Alert, buttonStyles, table, formatDate } from "@/components/dashboard/ui";
 
@@ -26,14 +29,25 @@ async function uploadDoc(formData: FormData) {
   if (!file.name.toLowerCase().endsWith(".pdf")) redirect("/dashboard/factory-docs?error=not-pdf");
   if (file.size > 20 * 1024 * 1024) redirect("/dashboard/factory-docs?error=too-large");
 
+  // Phase 1 (synchronous): parse + chunk + persist chunk rows. Fast and CPU-only.
+  let docId: number;
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    await ingestFactoryDocPdf(user.tenantId, file.name, buffer);
+    const created = await createFactoryDoc(user.tenantId, file.name, buffer);
+    docId = created.docId;
   } catch (err: unknown) {
-    const msg = err instanceof Error && err.message.includes("texto extraíble")
-      ? "scanned"
-      : "failed";
+    const msg = err instanceof ScannedPdfError ? "scanned" : "failed";
     redirect(`/dashboard/factory-docs?error=${msg}`);
+  }
+
+  // Phase 2 (durable): hand embedding off to Inngest so the request doesn't block on it.
+  try {
+    const evt = factoryDocUploaded.create({ docId, tenantId: user.tenantId });
+    await evt.validate();
+    await inngest.send(evt);
+  } catch {
+    await markDocFailed(docId, "No se pudo encolar el procesamiento. Eliminalo y volvé a subirlo.").catch(() => {});
+    redirect("/dashboard/factory-docs?error=failed");
   }
 
   redirect("/dashboard/factory-docs?uploaded=1");
@@ -75,6 +89,17 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function statusBadge(status: string): { tone: "success" | "warning" | "danger"; label: string } {
+  switch (status) {
+    case "INDEXED":
+      return { tone: "success", label: "Indexado" };
+    case "FAILED":
+      return { tone: "danger", label: "Error" };
+    default: // PENDING | PROCESSING
+      return { tone: "warning", label: "Procesando" };
+  }
+}
+
 export default async function FactoryDocsPage({
   searchParams,
 }: {
@@ -100,13 +125,21 @@ export default async function FactoryDocsPage({
       fileSize: true,
       pageCount: true,
       chunkCount: true,
-      isProcessed: true,
+      status: true,
+      error: true,
       createdAt: true,
     },
   });
 
+  // While any doc is still indexing, refresh the page so the badge flips to "Indexado"
+  // (or "Error") without the supervisor having to reload manually.
+  const anyProcessing = docs.some((d) => d.status === "PENDING" || d.status === "PROCESSING");
+
   return (
     <Page>
+      {/* React 19 hoists this to <head>; only rendered while something is still indexing. */}
+      {anyProcessing && <meta httpEquiv="refresh" content="6" />}
+
       <PageHeader
         title="Documentos de planta"
         description="Manuales, planos y procedimientos que el agente consulta al responder."
@@ -114,7 +147,7 @@ export default async function FactoryDocsPage({
 
       {uploaded && (
         <Alert tone="success" icon={CheckCircle2}>
-          Documento procesado. El agente ya puede usarlo.
+          Documento recibido. Se está indexando en segundo plano; en unos segundos va a estar disponible para el agente.
         </Alert>
       )}
       {error && (
@@ -133,7 +166,7 @@ export default async function FactoryDocsPage({
             >
               <Upload className="h-5 w-5 text-fg-subtle" strokeWidth={1.75} aria-hidden="true" />
               <span className="text-sm font-medium text-fg">Elegí un PDF</span>
-              <span className="text-xs text-fg-subtle">Se indexan hasta 80 páginas por documento</span>
+              <span className="text-xs text-fg-subtle">Con texto seleccionable, hasta 20 MB. Se indexa el documento completo.</span>
               <input
                 id="file"
                 type="file"
@@ -144,7 +177,7 @@ export default async function FactoryDocsPage({
               />
             </label>
           </div>
-          <CardFooter hint="El procesamiento puede demorar entre 10 y 60 segundos.">
+          <CardFooter hint="Se procesa en segundo plano: el estado pasa a “Indexado” cuando termina.">
             <button type="submit" className={buttonStyles.primary}>
               Procesar e indexar
             </button>
@@ -177,7 +210,9 @@ export default async function FactoryDocsPage({
                 </tr>
               </thead>
               <tbody>
-                {docs.map((doc) => (
+                {docs.map((doc) => {
+                  const badge = statusBadge(doc.status);
+                  return (
                   <tr key={doc.id} className={table.tr}>
                     <td className={table.td}>
                       <span className="flex items-center gap-2 font-medium text-fg">
@@ -186,10 +221,12 @@ export default async function FactoryDocsPage({
                       </span>
                     </td>
                     <td className={`${table.td} tabular-nums`}>{doc.pageCount ?? "-"}</td>
-                    <td className={`${table.td} tabular-nums`}>{doc.isProcessed ? doc.chunkCount : "-"}</td>
+                    <td className={`${table.td} tabular-nums`}>{doc.status === "INDEXED" ? doc.chunkCount : "-"}</td>
                     <td className={`${table.td} tabular-nums`}>{doc.fileSize ? formatBytes(doc.fileSize) : "-"}</td>
                     <td className={table.td}>
-                      <Badge tone={doc.isProcessed ? "success" : "warning"}>{doc.isProcessed ? "Indexado" : "Procesando"}</Badge>
+                      <span title={doc.error ?? undefined}>
+                        <Badge tone={badge.tone}>{badge.label}</Badge>
+                      </span>
                     </td>
                     <td className={table.td}>{formatDate(doc.createdAt)}</td>
                     <td className={`${table.td} text-right`}>
@@ -205,7 +242,8 @@ export default async function FactoryDocsPage({
                       </form>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

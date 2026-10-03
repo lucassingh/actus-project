@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
-import { generateEmbedding, embeddingToSql } from "@/lib/embeddings";
+import { generateEmbedding, generateEmbeddings, embeddingToSql } from "@/lib/embeddings";
 import { transcribeAudio } from "@/lib/transcription";
 import type {
   AgentMessageRequest,
@@ -170,16 +170,34 @@ async function extractText(input: AgentMessageRequest): Promise<string> {
   return block.type === "text" ? block.text : "";
 }
 
+// Retrieval tuning (cosine similarity, 0–1). KB entries are operator-written problem
+// statements, so they match a raw operator query well → keep a high bar. Manual chunks are
+// formal technical text, so even with query expansion the match runs looser → lower bar and
+// over-fetch, then keep the best DOC_TOP_K.
+const KB_SIM_THRESHOLD = 0.70;
+const DOC_SIM_THRESHOLD = 0.55;
+const DOC_OVERFETCH = 10;
+const DOC_TOP_K = 5;
+const KB_TOP_K = 5;
+
 async function getRAGContext(query: string, tenantId: number): Promise<string> {
-  let queryEmbedding: number[];
+  // Expand the (short, colloquial) operator message into a manual-flavoured query for the
+  // document search. KB search keeps the raw text. Best-effort — never blocks retrieval.
+  const docQueryText = await expandQuery(query);
+
+  let vectors: number[][];
   try {
-    queryEmbedding = await generateEmbedding(query);
+    // One batched call → two vectors: raw query (for KB) + expanded query (for docs).
+    vectors = await generateEmbeddings([query, docQueryText]);
   } catch {
-    // If embedding API is unavailable, degrade gracefully — agent still works without RAG
+    // If embedding API is unavailable, degrade gracefully — agent still works without RAG.
     return "";
   }
+  const kbVector = embeddingToSql(vectors[0]);
+  const docVector = embeddingToSql(vectors[1] ?? vectors[0]);
 
-  const vector = embeddingToSql(queryEmbedding);
+  // NOTE: columns are camelCase and must be quoted in raw SQL — unquoted identifiers fold to
+  // lowercase (problem_embedding ≠ "problemEmbedding") and the query errors at runtime.
 
   // Search resolved incident KB
   const kbResults = await prisma.$queryRaw<Array<{
@@ -187,34 +205,36 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
     solution_text: string;
     similarity: number;
   }>>`
-    SELECT problem_text, solution_text,
-           1 - (problem_embedding <=> ${vector}::vector) AS similarity
+    SELECT "problemText" AS problem_text, "solutionText" AS solution_text,
+           1 - ("problemEmbedding" <=> ${kbVector}::vector) AS similarity
     FROM knowledge_base
-    WHERE tenant_id = ${tenantId}
-      AND problem_embedding IS NOT NULL
-    ORDER BY problem_embedding <=> ${vector}::vector
-    LIMIT 5
+    WHERE "tenantId" = ${tenantId}
+      AND "problemEmbedding" IS NOT NULL
+    ORDER BY "problemEmbedding" <=> ${kbVector}::vector
+    LIMIT ${KB_TOP_K}
   `;
 
-  // Search factory doc chunks (manuals, procedures)
+  // Search factory doc chunks (manuals, procedures) — over-fetch, then rerank + top-k.
   const docResults = await prisma.$queryRaw<Array<{
     content: string;
+    page_num: number | null;
     doc_name: string;
     similarity: number;
   }>>`
-    SELECT fdc.content, fd.name as doc_name,
-           1 - (fdc.embedding <=> ${vector}::vector) AS similarity
+    SELECT fdc.content, fdc."pageNum" AS page_num, fd.name AS doc_name,
+           1 - (fdc.embedding <=> ${docVector}::vector) AS similarity
     FROM factory_doc_chunks fdc
-    JOIN factory_docs fd ON fd.id = fdc.doc_id
-    WHERE fdc.tenant_id = ${tenantId}
+    JOIN factory_docs fd ON fd.id = fdc."docId"
+    WHERE fdc."tenantId" = ${tenantId}
       AND fdc.embedding IS NOT NULL
-    ORDER BY fdc.embedding <=> ${vector}::vector
-    LIMIT 3
+    ORDER BY fdc.embedding <=> ${docVector}::vector
+    LIMIT ${DOC_OVERFETCH}
   `;
 
-  const SIM_THRESHOLD = 0.70;
-  const relevantKb  = kbResults.filter((r) => r.similarity > SIM_THRESHOLD);
-  const relevantDoc = docResults.filter((r) => r.similarity > SIM_THRESHOLD);
+  const relevantKb = kbResults.filter((r) => r.similarity > KB_SIM_THRESHOLD);
+  const relevantDoc = rerankDocChunks(
+    docResults.filter((r) => r.similarity > DOC_SIM_THRESHOLD)
+  ).slice(0, DOC_TOP_K);
 
   if (relevantKb.length === 0 && relevantDoc.length === 0) return "";
 
@@ -235,10 +255,10 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
     parts.push(
       "DOCUMENTACIÓN DE PLANTA:\n" +
       relevantDoc
-        .map(
-          (r, i) =>
-            `[Fragmento ${i + 1} de "${r.doc_name}" — similitud: ${(r.similarity * 100).toFixed(0)}%]\n${r.content}`
-        )
+        .map((r, i) => {
+          const page = r.page_num ? `, pág. ${r.page_num}` : "";
+          return `[Fragmento ${i + 1} de "${r.doc_name}"${page} — similitud: ${(r.similarity * 100).toFixed(0)}%]\n${r.content}`;
+        })
         .join("\n\n")
     );
   }
@@ -246,9 +266,40 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
   return parts.join("\n\n");
 }
 
+// HyDE-lite query expansion: rewrite the operator's colloquial message into a short,
+// manual-flavoured query, appended to (not replacing) the original so we keep its terms.
+// Best-effort — a very short message or any API error falls back to the raw query.
+async function expandQuery(userText: string): Promise<string> {
+  const trimmed = userText.trim();
+  if (trimmed.length < 12) return trimmed;
+  try {
+    const res = await anthropic.messages.create({
+      model: AGENT_MODEL,
+      max_tokens: 160,
+      system:
+        "Convertí el mensaje de un operario de planta en una consulta técnica para buscar en un manual de mantenimiento industrial. " +
+        "Incluí términos técnicos probables (componentes, síntomas, códigos de error) y una frase breve como aparecería en el manual. " +
+        "Respondé SOLO con la consulta, sin preámbulos, en español, máximo 2 líneas.",
+      messages: [{ role: "user", content: trimmed }],
+    });
+    const block = res.content[0];
+    const rewritten = block && block.type === "text" ? block.text.trim() : "";
+    return rewritten ? `${trimmed}\n${rewritten}` : trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+// Reranking seam. For the pilot's small corpus, structure-aware chunking + query expansion
+// + over-fetch is enough, so this keeps the DB cosine order as-is. A reranker (Claude-based
+// or a dedicated API like Cohere/Voyage) slots in here without touching getRAGContext.
+function rerankDocChunks<T>(candidates: T[]): T[] {
+  return candidates;
+}
+
 function buildSystemPrompt(tenantName: string, ragContext: string): string {
   const contextSection = ragContext
-    ? `\nBASE DE CONOCIMIENTO — Casos similares resueltos en ${tenantName}:\n${ragContext}\n`
+    ? `\nINFORMACIÓN DE REFERENCIA de ${tenantName} (casos resueltos y documentación de planta):\n${ragContext}\n`
     : "";
 
   return `Sos un asistente de mantenimiento industrial para ${tenantName}.
@@ -264,6 +315,7 @@ CÓMO RESPONDER UN INCIDENTE:
 - Respondé siempre en español argentino, de forma clara y directa
 - Si falta información, pedí exactamente lo que necesitás: nombre/código de máquina, sector/ubicación, síntoma específico
 - Siempre proponé 2-3 acciones concretas numeradas, ordenadas por probabilidad de éxito
+- Si usás la DOCUMENTACIÓN DE PLANTA, citá la página cuando esté disponible (ej: "según el manual, pág. 12")
 - Cuando el operador confirme que una opción funcionó (ej: "Funcionó la opción 1", "anduvo", "se resolvió"), respondé confirmando la resolución y marcá el evento como resuelto
 
 BLOQUE META — incluilo AL FINAL de cada respuesta, nunca lo muestres al operador:
@@ -398,9 +450,10 @@ async function createKBEntryWithEmbedding({
   const embedding = await generateEmbedding(problemText);
   const vector = embeddingToSql(embedding);
 
+  // Column is camelCase — must be quoted in raw SQL (unquoted folds to problem_embedding).
   await prisma.$executeRaw`
     UPDATE knowledge_base
-    SET problem_embedding = ${vector}::vector
+    SET "problemEmbedding" = ${vector}::vector
     WHERE id = ${entry.id}
   `;
 }
