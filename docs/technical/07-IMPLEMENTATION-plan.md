@@ -1,5 +1,11 @@
 # 07 — Implementation Plan (Gap Analysis → Execution Backlog)
 
+> ⚠️ **SNAPSHOT HISTÓRICO (2026-06-29) — NO refleja el estado actual.** Fue escrito cuando el
+> operador usaba una app mobile (Expo) con rutas REST (`/api/v1/events/:id`, etc.). Esas rutas
+> y la app mobile **ya no existen**: el operador usa WhatsApp. Además, aquí dice "audio via Claude
+> multimodal" — es **incorrecto**, el audio se transcribe con OpenAI Whisper. Para el estado y el
+> backlog vigentes ver `docs/TODO.md` y la auditoría del 2026-10-02. Se conserva solo como registro.
+
 Generated from full audit of: `agent.service.ts`, all API routes, all dashboard pages,
 and cross-referenced against `01-AGENT-architecture.md`, `03-API-contracts.md`,
 `01-MVP-scope.md`, and `03-PILOT-essen.md`.

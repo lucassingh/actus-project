@@ -183,7 +183,8 @@ model KnowledgeBase {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FACTORY DOC
-// Uploaded manuals/procedures. Ingested into KB (post-MVP).
+// Uploaded manuals/procedures. Chunked + embedded into factory_doc_chunks and searched
+// via RAG on every operator message (see factory-doc.service.ts + agent.service.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 
 model FactoryDoc {
