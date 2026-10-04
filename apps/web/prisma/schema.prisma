@@ -35,6 +35,7 @@ model Tenant {
   knowledgeBase    KnowledgeBase[]
   factoryDocs      FactoryDoc[]
   factoryDocChunks FactoryDocChunk[]
+  machines         Machine[]
 
   @@map("tenants")
 }
@@ -102,7 +103,11 @@ model Event {
   conversationHistory Json?
   aiSuggestions       Json?
 
+  // machineName is kept as free-text (what the operator/agent said) and as a fallback when a
+  // report can't be matched to a registered Machine. machineId links to the real entity when
+  // the message's machine code/name resolves to one (see lib/machines.ts).
   machineName String?
+  machineId   Int?
   location    String?
   symptoms    String[]
 
@@ -128,11 +133,13 @@ model Event {
   tenant             Tenant         @relation(fields: [tenantId], references: [id])
   creator            User           @relation("EventCreator", fields: [creatorId], references: [id])
   assignee           User?          @relation("EventAssignee", fields: [assigneeId], references: [id])
+  machine            Machine?       @relation(fields: [machineId], references: [id], onDelete: SetNull)
   knowledgeBaseEntry KnowledgeBase?
 
   @@index([tenantId])
   @@index([creatorId])
   @@index([status])
+  @@index([machineId])
   @@map("events")
 }
 
@@ -260,4 +267,31 @@ model WhatsAppInboundMessage {
   receivedAt DateTime @default(now())
 
   @@map("whatsapp_inbound_messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MACHINE
+// A real piece of equipment in a tenant's plant. `code` is the human identifier that
+// goes in the QR sticker and is matched against operator messages to link an incident
+// to the machine (see lib/machines.ts). Scanning the QR opens WhatsApp to the bot with
+// "Máquina <code>: " pre-filled; typing the code by hand resolves the same way.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Machine {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int
+  name      String
+  code      String
+  sector    String?
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  events Event[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("machines")
 }

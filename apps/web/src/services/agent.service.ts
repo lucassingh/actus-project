@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generateEmbedding, generateEmbeddings, embeddingToSql } from "@/lib/embeddings";
 import { transcribeAudio } from "@/lib/transcription";
 import { UPDATE_EVENT_TOOL, parseEventUpdate } from "./agent-event-update";
+import { resolveMachine, type ResolvedMachine } from "@/lib/resolve-machine";
 import type {
   AgentMessageRequest,
   AgentMessageResponse,
@@ -64,6 +65,13 @@ export async function processAgentMessage(
   const systemPrompt = buildSystemPrompt(tenant?.name ?? "la planta", ragContext);
   const { reply: cleanResponse, eventUpdate } = await callClaude(systemPrompt, history, userText);
 
+  // Link the incident to a registered Machine when the message (QR prefill or typed code) or
+  // the agent's extracted machine name resolves to one. null → keep the free-text machineName.
+  const machine = await resolveMachine(context.tenantId, {
+    text: userText,
+    machineName: eventUpdate?.machineName ?? null,
+  });
+
   // 6. Persist: append messages + apply event update
   const newMessages: ConversationMessage[] = [
     {
@@ -81,7 +89,7 @@ export async function processAgentMessage(
     },
   ];
 
-  await persistConversation(event.id, history.messages, newMessages, eventUpdate, referencedKbIds);
+  await persistConversation(event.id, history.messages, newMessages, eventUpdate, referencedKbIds, machine);
 
   return {
     response: cleanResponse,
@@ -398,7 +406,8 @@ async function persistConversation(
   existingMessages: ConversationMessage[],
   newMessages: ConversationMessage[],
   eventUpdate: EventUpdate | undefined,
-  referencedKbIds: number[]
+  referencedKbIds: number[],
+  machine: ResolvedMachine | null
 ) {
   const allMessages = [...existingMessages, ...newMessages];
 
@@ -418,10 +427,17 @@ async function persistConversation(
     updatedAt: new Date(),
   };
 
+  // A resolved Machine wins: link it and use its canonical name. Never clear an existing link
+  // on a later turn that doesn't mention the machine.
+  if (machine) {
+    updateData.machineId = machine.id;
+    updateData.machineName = machine.name;
+  }
+
   if (eventUpdate) {
     if (eventUpdate.status) updateData.status = eventUpdate.status;
     if (eventUpdate.priority) updateData.priority = eventUpdate.priority;
-    if (eventUpdate.machineName) updateData.machineName = eventUpdate.machineName;
+    if (!machine && eventUpdate.machineName) updateData.machineName = eventUpdate.machineName;
     if (eventUpdate.location) updateData.location = eventUpdate.location;
 
     // Escalation to a human — set once, on the first trigger (tool flag or CRITICAL priority).
