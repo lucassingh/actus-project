@@ -50,13 +50,18 @@ Reescrito el pipeline de ingesta + búsqueda (branch `etapa-2-rag-robustez`):
 
 > **Pendiente operativo:** correr la migración `20261003000000_factory_doc_ingestion_status` (`npm run db:deploy`) — agrega `status` y `error` a `factory_docs`.
 
-## 🟠 P2 — Robustez del agente
+## 🟠 P2 — Robustez del agente — ✅ Etapa 3 (branch `etapa-3-robustez-agente`)
 
-- Reemplazar el parsing por regex del bloque `[[META|...]]` por **tool use / Zod structured outputs** (patrón de agrodata `packages/ai`).
-- **Feedback loop**: `effectivenessScore` queda hardcodeado en 7 y `timesReferenced` nunca sube → la KB no aprende qué sirve.
-- **Escalamiento a supervisor** cuando el bot no resuelve o la prioridad es crítica.
-- **Idempotencia**: un reintento de `process-agent-message` puede crear un Event duplicado.
-- **Primeros tests unitarios** (hoy no hay ninguno).
+**PR A — core (✅ hecho, 2026-10-03):**
+- ✅ **Tool use + Zod** reemplaza el regex `[[META|...]]`: Claude responde al operario y llama a la tool `update_event` en el mismo call; el input se valida con Zod (`services/agent-event-update.ts`). Si la tool viene malformada, degrada a "sin update" en vez de escribir basura.
+- ✅ **Idempotencia**: el evento guarda el wamid que lo creó (`Event.sourceMessageId`, único); un reintento del step de Inngest reutiliza ese evento en vez de duplicarlo. Migración `20261003010000_event_source_message_id`.
+- ✅ **Primeros tests** con **vitest** (`npm test`): 16 tests (chunking de manuales + parseo de la tool).
+
+**PR B — features de supervisión (✅ hecho, 2026-10-04):**
+- ✅ **Feedback loop**: `timesReferenced` sube cada vez que una entrada de KB se usa en el RAG; `effectivenessScore` ya no es hardcodeado (default 5) y sube (cap 10) para las entradas que estaban en contexto cuando se resolvió un incidente (atribución vía `Event.referencedKbIds`).
+- ✅ **Escalamiento a supervisor** → **flag en el dashboard** (decisión del usuario): `Event.escalatedAt`/`escalationReason`, trigger prioridad CRITICAL o el operario pide un humano (la tool `update_event` expone `escalate`). Badge "Escalado" en lista y banner en el detalle. WhatsApp al supervisor queda para cuando esté la verificación Meta.
+
+> **Pendiente operativo (al mergear):** correr `npm run db:deploy` — aplica 3 migraciones de la Etapa 3 (`event_source_message_id`, `event_feedback_escalation`) además de las de Etapa 2.
 
 ## 🟡 P3 — UX / pulido / landing
 

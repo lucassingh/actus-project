@@ -45,6 +45,8 @@ export interface EventSummary {
   location: string | null;
   createdAt: string;
   resolvedAt: string | null;
+  escalatedAt: string | null;
+  escalationReason: string | null;
   creator: {
     id: number;
     name: string;
@@ -99,6 +101,8 @@ export interface EventUpdate {
   location?: string;
   resolved?: boolean;
   title?: string;
+  escalate?: boolean;
+  escalationReason?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,7 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateEmbedding, generateEmbeddings, embeddingToSql } from "@/lib/embeddings";
 import { transcribeAudio } from "@/lib/transcription";
+import { UPDATE_EVENT_TOOL, parseEventUpdate } from "./agent-event-update";
 import type {
   AgentMessageRequest,
   AgentMessageResponse,
@@ -21,7 +23,7 @@ const MAX_EVENT_MESSAGES = 40; // hard cap on stored user+assistant messages per
 
 export async function processAgentMessage(
   input: AgentMessageRequest,
-  context: { userId: number; tenantId: number }
+  context: { userId: number; tenantId: number; sourceMessageId?: string }
 ): Promise<AgentMessageResponse> {
   // 1. Process input (text / audio / image → text)
   const userText = await extractText(input);
@@ -42,21 +44,27 @@ export async function processAgentMessage(
     };
   }
 
-  // 4. Get RAG context from knowledge base
-  const ragContext = await getRAGContext(userText, context.tenantId);
+  // 4. Get RAG context from knowledge base + manuals
+  const { context: ragContext, referencedKbIds } = await getRAGContext(userText, context.tenantId);
 
-  // 5. Call Claude
+  // Feedback loop: bump the usage counter for every KB entry surfaced to the agent.
+  // Fire-and-forget — a counter update must never delay (or fail) the operator's reply.
+  if (referencedKbIds.length > 0) {
+    prisma.knowledgeBase
+      .updateMany({ where: { id: { in: referencedKbIds } }, data: { timesReferenced: { increment: 1 } } })
+      .catch((err) => console.error("[KB] timesReferenced bump failed", err));
+  }
+
+  // 5. Call Claude — the reply text + the structured event update (via the update_event tool)
+  //    come back from a single call.
   const tenant = await prisma.tenant.findUnique({
     where: { id: context.tenantId },
     select: { name: true },
   });
   const systemPrompt = buildSystemPrompt(tenant?.name ?? "la planta", ragContext);
-  const claudeResponse = await callClaude(systemPrompt, history, userText);
+  const { reply: cleanResponse, eventUpdate } = await callClaude(systemPrompt, history, userText);
 
-  // 6. Extract structured event update from Claude response
-  const { cleanResponse, eventUpdate } = extractEventUpdate(claudeResponse);
-
-  // 7. Persist: append messages + apply event update
+  // 6. Persist: append messages + apply event update
   const newMessages: ConversationMessage[] = [
     {
       role: "user",
@@ -73,7 +81,7 @@ export async function processAgentMessage(
     },
   ];
 
-  await persistConversation(event.id, history.messages, newMessages, eventUpdate);
+  await persistConversation(event.id, history.messages, newMessages, eventUpdate, referencedKbIds);
 
   return {
     response: cleanResponse,
@@ -88,7 +96,7 @@ export async function processAgentMessage(
 
 async function resolveEvent(
   input: AgentMessageRequest,
-  context: { userId: number; tenantId: number },
+  context: { userId: number; tenantId: number; sourceMessageId?: string },
   problemText: string
 ) {
   if (input.eventId) {
@@ -97,6 +105,16 @@ async function resolveEvent(
     });
     if (!event) throw new Error("Event not found");
     return event;
+  }
+
+  // Idempotency: if a retried Inngest step already created an event for this inbound
+  // message, reuse it instead of creating a duplicate. (Covers the gap the active-event
+  // lookup misses when the first attempt created AND resolved the event before failing.)
+  if (context.sourceMessageId) {
+    const existing = await prisma.event.findUnique({
+      where: { sourceMessageId: context.sourceMessageId },
+    });
+    if (existing) return existing;
   }
 
   // Create a new draft event. The operator's first message is the incident's problem —
@@ -111,6 +129,7 @@ async function resolveEvent(
       status: "DRAFT",
       contentType: input.messageType === "text" ? "TEXT" : input.messageType === "audio" ? "AUDIO" : "IMAGE",
       conversationHistory: { messages: [] },
+      sourceMessageId: context.sourceMessageId ?? null,
     },
   });
 }
@@ -180,7 +199,14 @@ const DOC_OVERFETCH = 10;
 const DOC_TOP_K = 5;
 const KB_TOP_K = 5;
 
-async function getRAGContext(query: string, tenantId: number): Promise<string> {
+interface RAGResult {
+  context: string;
+  referencedKbIds: number[]; // KB entries surfaced to the agent — drives the feedback loop
+}
+
+const EMPTY_RAG: RAGResult = { context: "", referencedKbIds: [] };
+
+async function getRAGContext(query: string, tenantId: number): Promise<RAGResult> {
   // Expand the (short, colloquial) operator message into a manual-flavoured query for the
   // document search. KB search keeps the raw text. Best-effort — never blocks retrieval.
   const docQueryText = await expandQuery(query);
@@ -191,7 +217,7 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
     vectors = await generateEmbeddings([query, docQueryText]);
   } catch {
     // If embedding API is unavailable, degrade gracefully — agent still works without RAG.
-    return "";
+    return EMPTY_RAG;
   }
   const kbVector = embeddingToSql(vectors[0]);
   const docVector = embeddingToSql(vectors[1] ?? vectors[0]);
@@ -201,11 +227,12 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
 
   // Search resolved incident KB
   const kbResults = await prisma.$queryRaw<Array<{
+    id: number;
     problem_text: string;
     solution_text: string;
     similarity: number;
   }>>`
-    SELECT "problemText" AS problem_text, "solutionText" AS solution_text,
+    SELECT id, "problemText" AS problem_text, "solutionText" AS solution_text,
            1 - ("problemEmbedding" <=> ${kbVector}::vector) AS similarity
     FROM knowledge_base
     WHERE "tenantId" = ${tenantId}
@@ -236,7 +263,9 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
     docResults.filter((r) => r.similarity > DOC_SIM_THRESHOLD)
   ).slice(0, DOC_TOP_K);
 
-  if (relevantKb.length === 0 && relevantDoc.length === 0) return "";
+  const referencedKbIds = relevantKb.map((r) => r.id);
+
+  if (relevantKb.length === 0 && relevantDoc.length === 0) return EMPTY_RAG;
 
   const parts: string[] = [];
 
@@ -263,7 +292,7 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
     );
   }
 
-  return parts.join("\n\n");
+  return { context: parts.join("\n\n"), referencedKbIds };
 }
 
 // HyDE-lite query expansion: rewrite the operator's colloquial message into a short,
@@ -316,22 +345,23 @@ CÓMO RESPONDER UN INCIDENTE:
 - Si falta información, pedí exactamente lo que necesitás: nombre/código de máquina, sector/ubicación, síntoma específico
 - Siempre proponé 2-3 acciones concretas numeradas, ordenadas por probabilidad de éxito
 - Si usás la DOCUMENTACIÓN DE PLANTA, citá la página cuando esté disponible (ej: "según el manual, pág. 12")
-- Cuando el operador confirme que una opción funcionó (ej: "Funcionó la opción 1", "anduvo", "se resolvió"), respondé confirmando la resolución y marcá el evento como resuelto
+- Cuando el operador confirme que una opción funcionó (ej: "Funcionó la opción 1", "anduvo", "se resolvió"), respondé confirmando la resolución
 
-BLOQUE META — incluilo AL FINAL de cada respuesta, nunca lo muestres al operador:
-[[META|status:STATUS|priority:PRIORITY|machine:NOMBRE_MAQUINA|resolved:BOOL]]
-- status: draft | open | in_progress | resolved
-- priority: low | medium | high | critical
-- machine: nombre o código de la máquina (null si no se sabe)
-- resolved: true solo cuando el operador confirmó que la solución funcionó
-Ejemplo: [[META|status:in_progress|priority:high|machine:COMP-005|resolved:false]]`;
+ESTADO DEL INCIDENTE:
+- En CADA respuesta, además del texto para el operador, llamá a la herramienta "update_event" con tu mejor evaluación del estado actual del incidente (status, prioridad, máquina si se sabe, y resolved).
+- Poné resolved=true SOLO cuando el operador haya confirmado que la solución funcionó.
+- Poné escalate=true (con una escalationReason breve) si el incidente necesita a un supervisor humano: prioridad crítica (riesgo de seguridad o parada de planta) o el operador pide hablar con una persona. Si escalás, decile al operador que avisás a su supervisor.
+- La herramienta es para uso interno del sistema: nunca menciones "update_event" ni el estado estructurado en el texto que ve el operador.`;
 }
+
+const EMPTY_REPLY_FALLBACK =
+  "Recibí tu mensaje. ¿Podés darme un poco más de detalle para ayudarte mejor?";
 
 async function callClaude(
   systemPrompt: string,
   history: { messages: ConversationMessage[] },
   userMessage: string
-): Promise<string> {
+): Promise<{ reply: string; eventUpdate: EventUpdate | undefined }> {
   const recentMessages = history.messages.slice(-MAX_HISTORY_TURNS * 2);
 
   const claudeMessages: Anthropic.MessageParam[] = [
@@ -347,52 +377,44 @@ async function callClaude(
     max_tokens: 1024,
     system: systemPrompt,
     messages: claudeMessages,
+    tools: [UPDATE_EVENT_TOOL],
   });
 
-  const block = response.content[0];
-  return block.type === "text" ? block.text : "";
-}
-
-function extractEventUpdate(rawResponse: string): {
-  cleanResponse: string;
-  eventUpdate: EventUpdate | undefined;
-} {
-  const metaRegex = /\[\[META\|(.*?)\]\]/;
-  const match = rawResponse.match(metaRegex);
-
-  if (!match) {
-    return { cleanResponse: rawResponse.trim(), eventUpdate: undefined };
+  let reply = "";
+  let eventUpdate: EventUpdate | undefined;
+  for (const block of response.content) {
+    if (block.type === "text") {
+      reply += block.text;
+    } else if (block.type === "tool_use" && block.name === "update_event") {
+      eventUpdate = parseEventUpdate(block.input);
+    }
   }
 
-  const cleanResponse = rawResponse.replace(match[0], "").trim();
-  const pairs = match[1].split("|");
-  const meta: Record<string, string> = {};
-
-  for (const pair of pairs) {
-    const [key, value] = pair.split(":");
-    if (key && value && value !== "null") meta[key.trim()] = value.trim();
-  }
-
-  const eventUpdate: EventUpdate = {};
-  if (meta.status) eventUpdate.status = meta.status.toUpperCase() as EventUpdate["status"];
-  if (meta.priority) eventUpdate.priority = meta.priority.toUpperCase() as EventUpdate["priority"];
-  if (meta.machine) eventUpdate.machineName = meta.machine;
-  if (meta.resolved === "true") eventUpdate.resolved = true;
-
-  return { cleanResponse, eventUpdate };
+  return { reply: reply.trim() || EMPTY_REPLY_FALLBACK, eventUpdate };
 }
 
 async function persistConversation(
   eventId: number,
   existingMessages: ConversationMessage[],
   newMessages: ConversationMessage[],
-  eventUpdate: EventUpdate | undefined
+  eventUpdate: EventUpdate | undefined,
+  referencedKbIds: number[]
 ) {
   const allMessages = [...existingMessages, ...newMessages];
+
+  // One read for the fields we need to evolve across turns.
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { problemContent: true, tenantId: true, escalatedAt: true, referencedKbIds: true },
+  });
+
+  // Accumulate the KB entries surfaced across the whole conversation (deduped).
+  const mergedKbIds = Array.from(new Set([...(event?.referencedKbIds ?? []), ...referencedKbIds]));
 
   const updateData: Parameters<typeof prisma.event.update>[0]["data"] = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     conversationHistory: { messages: allMessages } as any,
+    referencedKbIds: { set: mergedKbIds },
     updatedAt: new Date(),
   };
 
@@ -402,27 +424,41 @@ async function persistConversation(
     if (eventUpdate.machineName) updateData.machineName = eventUpdate.machineName;
     if (eventUpdate.location) updateData.location = eventUpdate.location;
 
+    // Escalation to a human — set once, on the first trigger (tool flag or CRITICAL priority).
+    const shouldEscalate = eventUpdate.escalate || eventUpdate.priority === "CRITICAL";
+    if (shouldEscalate && event && !event.escalatedAt) {
+      updateData.escalatedAt = new Date();
+      updateData.escalationReason =
+        eventUpdate.escalationReason ??
+        (eventUpdate.priority === "CRITICAL" ? "Prioridad crítica" : "El operador pidió asistencia humana");
+    }
+
     if (eventUpdate.resolved) {
       updateData.status = "RESOLVED";
       updateData.resolvedAt = new Date();
 
       const lastAssistant = [...newMessages].reverse().find((m) => m.role === "assistant");
-      if (lastAssistant) {
+      if (lastAssistant && event) {
         updateData.solution = lastAssistant.content;
 
         // Create KB entry + embedding (fire and forget — don't block response)
-        const event = await prisma.event.findUnique({
-          where: { id: eventId },
-          select: { problemContent: true, tenantId: true },
-        });
+        createKBEntryWithEmbedding({
+          tenantId: event.tenantId,
+          eventId,
+          problemText: event.problemContent ?? "Incidente",
+          solutionText: lastAssistant.content,
+        }).catch((err) => console.error("[KB creation failed]", err));
 
-        if (event) {
-          createKBEntryWithEmbedding({
-            tenantId: event.tenantId,
-            eventId,
-            problemText: event.problemContent ?? "Incidente",
-            solutionText: lastAssistant.content,
-          }).catch((err) => console.error("[KB creation failed]", err));
+        // Feedback loop: the KB entries that were in context when this incident got resolved
+        // earned their keep — bump their effectiveness (capped at 10). Fire-and-forget.
+        if (mergedKbIds.length > 0) {
+          prisma
+            .$executeRaw`
+              UPDATE knowledge_base
+              SET "effectivenessScore" = LEAST(10, "effectivenessScore" + 1), "updatedAt" = now()
+              WHERE id IN (${Prisma.join(mergedKbIds)})
+            `
+            .catch((err) => console.error("[KB] effectivenessScore bump failed", err));
         }
       }
     }
@@ -442,8 +478,10 @@ async function createKBEntryWithEmbedding({
   problemText: string;
   solutionText: string;
 }) {
+  // effectivenessScore uses the schema default (5) and evolves via the feedback loop
+  // (bumped when this entry later helps resolve another incident).
   const entry = await prisma.knowledgeBase.create({
-    data: { tenantId, eventId, problemText, solutionText, effectivenessScore: 7 },
+    data: { tenantId, eventId, problemText, solutionText },
     select: { id: true },
   });
 

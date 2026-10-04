@@ -54,6 +54,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         location: true,
         createdAt: true,
         resolvedAt: true,
+        escalatedAt: true,
+        escalationReason: true,
         creator: { select: { id: true, name: true, lastname: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -70,6 +72,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     ...e,
     createdAt: e.createdAt.toISOString(),
     resolvedAt: e.resolvedAt?.toISOString() ?? null,
+    escalatedAt: e.escalatedAt?.toISOString() ?? null,
   }));
 
   const pageHref = (p: number) => {
