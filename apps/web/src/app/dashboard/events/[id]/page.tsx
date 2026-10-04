@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +29,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     include: {
       creator: { select: { name: true, lastname: true, email: true } },
       assignee: { select: { name: true, lastname: true } },
+      machine: { select: { id: true, code: true } },
     },
   });
   if (!event) notFound();
@@ -43,7 +45,20 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     ["Tipo", EVENT_TYPE[event.eventType] ?? event.eventType],
     ["Reportado por", creatorName],
     ["Asignado a", event.assignee ? `${event.assignee.name} ${event.assignee.lastname}` : "Sin asignar"],
-    ["Máquina", event.machineName ?? "-"],
+    [
+      "Máquina",
+      event.machine ? (
+        <Link
+          key="m"
+          href={`/dashboard/machines/${event.machine.id}`}
+          className="font-medium text-primary hover:underline"
+        >
+          {event.machineName ?? event.machine.code}
+        </Link>
+      ) : (
+        event.machineName ?? "-"
+      ),
+    ],
     ["Ubicación", event.location ?? "-"],
     ["Creado", formatDate(event.createdAt, true)],
     ["Resuelto", event.resolvedAt ? formatDate(event.resolvedAt, true) : "-"],
