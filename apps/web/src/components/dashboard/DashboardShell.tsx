@@ -11,6 +11,7 @@ import {
   Users,
   UserCircle,
   AlertCircle,
+  BarChart3,
   FileText,
   BookOpen,
   LifeBuoy,
@@ -66,6 +67,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { label: "Eventos", path: "/dashboard/events", icon: AlertCircle, roles: ["SUPERVISOR"] },
+  { label: "KPIs", path: "/dashboard/kpis", icon: BarChart3, roles: ["SUPERVISOR"] },
   { label: "Documentos", path: "/dashboard/factory-docs", icon: FileText, roles: ["SUPERVISOR"] },
   { label: "Base de conocimiento", path: "/dashboard/knowledge-base", icon: BookOpen, roles: ["SUPERVISOR", "ADMIN"] },
 ];
@@ -75,6 +77,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   supervisors: "Supervisores",
   operators: "Operadores",
   events: "Eventos",
+  kpis: "KPIs",
   "factory-docs": "Documentos",
   "knowledge-base": "Base de conocimiento",
   create: "Nuevo",
