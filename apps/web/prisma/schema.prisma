@@ -111,6 +111,16 @@ model Event {
   // nullable because events created outside the WhatsApp flow (e.g. dashboard) don't set it.
   sourceMessageId String? @unique
 
+  // Escalation to a human: set once (first trigger) when priority is CRITICAL or the operator
+  // asks for a person. Surfaced in the supervisor dashboard. `escalatedAt` null = not escalated.
+  escalatedAt      DateTime?
+  escalationReason String?
+
+  // KB entries surfaced to the agent while handling this event (accumulated across turns).
+  // On resolution their effectivenessScore is bumped — the feedback loop that lets the KB
+  // learn which resolved-incident entries actually help close new incidents.
+  referencedKbIds Int[] @default([])
+
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   resolvedAt DateTime?

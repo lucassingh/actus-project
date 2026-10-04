@@ -17,7 +17,10 @@ export function EventCard({ event }: { event: EventSummary }) {
         className="group grid grid-cols-[1fr_auto] items-center gap-4 px-5 py-3.5 transition-colors duration-150 hover:bg-[#FAFAFB] md:grid-cols-[minmax(0,1fr)_180px_110px_110px_16px]"
       >
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-fg">{event.title}</p>
+          <p className="flex items-center gap-2 truncate text-sm font-medium text-fg">
+            <span className="truncate">{event.title}</span>
+            {event.escalatedAt && <Badge tone="danger">Escalado</Badge>}
+          </p>
           <p className="mt-0.5 flex gap-x-3 truncate text-xs text-fg-subtle">
             <span>{EVENT_TYPE[event.eventType] ?? event.eventType}</span>
             {event.machineName && <span>{event.machineName}</span>}

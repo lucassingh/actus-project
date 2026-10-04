@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Bot, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Bot, MessageSquare, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { ConversationHistory } from "@actus/types";
 import { Page, PageHeader, Card, CardHeader, Badge, EmptyState, Avatar, formatDate } from "@/components/dashboard/ui";
 import { EVENT_STATUS, EVENT_PRIORITY, EVENT_TYPE } from "@/components/dashboard/event-meta";
@@ -57,6 +57,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <>
             <Badge tone={status.tone}>{status.label}</Badge>
             <Badge tone={priority.tone}>{priority.label}</Badge>
+            {event.escalatedAt && <Badge tone="danger">Escalado</Badge>}
             <span className="font-mono text-xs text-white/60">#{event.id}</span>
           </>
         }
@@ -66,6 +67,21 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-6">
+          {event.escalatedAt && (
+            <Card className="border-[#F3C7C7]">
+              <div className="flex gap-3 px-5 py-4">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#B42626]" strokeWidth={1.75} aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-medium text-fg">Escalado a supervisor</p>
+                  <p className="mt-1 text-sm leading-relaxed text-fg-muted">
+                    {event.escalationReason ?? "Este incidente requiere atención humana."}
+                    <span className="mt-0.5 block text-xs text-fg-subtle">{formatDate(event.escalatedAt, true)}</span>
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {event.solution && (
             <Card className="border-[#BFE5CF]">
               <div className="flex gap-3 px-5 py-4">

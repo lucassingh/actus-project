@@ -50,6 +50,23 @@ describe("parseEventUpdate", () => {
     expect(parseEventUpdate({})).toBeUndefined();
     expect(parseEventUpdate({ resolved: false })).toBeUndefined();
   });
+
+  it("maps escalation flags", () => {
+    const update = parseEventUpdate({
+      status: "OPEN",
+      priority: "CRITICAL",
+      resolved: false,
+      escalate: true,
+      escalationReason: "Riesgo de seguridad",
+    });
+    expect(update).toMatchObject({ escalate: true, escalationReason: "Riesgo de seguridad" });
+  });
+
+  it("omits escalate when false", () => {
+    const update = parseEventUpdate({ status: "OPEN", priority: "LOW", resolved: false, escalate: false });
+    expect(update).toEqual({ status: "OPEN", priority: "LOW" });
+    expect(update).not.toHaveProperty("escalate");
+  });
 });
 
 describe("UPDATE_EVENT_TOOL", () => {

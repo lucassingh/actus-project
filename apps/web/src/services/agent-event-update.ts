@@ -20,6 +20,8 @@ export const eventUpdateToolSchema = z.object({
   machineName: z.string().nullish(),
   location: z.string().nullish(),
   resolved: z.boolean().optional(),
+  escalate: z.boolean().optional(),
+  escalationReason: z.string().nullish(),
 });
 
 export const UPDATE_EVENT_TOOL: Anthropic.Tool = {
@@ -51,6 +53,15 @@ export const UPDATE_EVENT_TOOL: Anthropic.Tool = {
         type: "boolean",
         description: "true SOLO cuando el operador confirmó que la solución funcionó.",
       },
+      escalate: {
+        type: "boolean",
+        description:
+          "true si el incidente necesita a un supervisor humano: prioridad crítica (riesgo de seguridad o parada de planta) o el operador pide hablar con una persona.",
+      },
+      escalationReason: {
+        type: "string",
+        description: "Motivo breve del escalamiento. Solo cuando escalate=true.",
+      },
     },
     required: ["status", "priority", "resolved"],
   },
@@ -72,6 +83,8 @@ export function parseEventUpdate(input: unknown): EventUpdate | undefined {
   if (d.machineName) update.machineName = d.machineName;
   if (d.location) update.location = d.location;
   if (d.resolved) update.resolved = true;
+  if (d.escalate) update.escalate = true;
+  if (d.escalationReason) update.escalationReason = d.escalationReason;
 
   return Object.keys(update).length > 0 ? update : undefined;
 }

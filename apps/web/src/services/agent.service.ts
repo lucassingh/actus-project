@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateEmbedding, generateEmbeddings, embeddingToSql } from "@/lib/embeddings";
 import { transcribeAudio } from "@/lib/transcription";
@@ -43,8 +44,16 @@ export async function processAgentMessage(
     };
   }
 
-  // 4. Get RAG context from knowledge base
-  const ragContext = await getRAGContext(userText, context.tenantId);
+  // 4. Get RAG context from knowledge base + manuals
+  const { context: ragContext, referencedKbIds } = await getRAGContext(userText, context.tenantId);
+
+  // Feedback loop: bump the usage counter for every KB entry surfaced to the agent.
+  // Fire-and-forget — a counter update must never delay (or fail) the operator's reply.
+  if (referencedKbIds.length > 0) {
+    prisma.knowledgeBase
+      .updateMany({ where: { id: { in: referencedKbIds } }, data: { timesReferenced: { increment: 1 } } })
+      .catch((err) => console.error("[KB] timesReferenced bump failed", err));
+  }
 
   // 5. Call Claude — the reply text + the structured event update (via the update_event tool)
   //    come back from a single call.
@@ -72,7 +81,7 @@ export async function processAgentMessage(
     },
   ];
 
-  await persistConversation(event.id, history.messages, newMessages, eventUpdate);
+  await persistConversation(event.id, history.messages, newMessages, eventUpdate, referencedKbIds);
 
   return {
     response: cleanResponse,
@@ -190,7 +199,14 @@ const DOC_OVERFETCH = 10;
 const DOC_TOP_K = 5;
 const KB_TOP_K = 5;
 
-async function getRAGContext(query: string, tenantId: number): Promise<string> {
+interface RAGResult {
+  context: string;
+  referencedKbIds: number[]; // KB entries surfaced to the agent — drives the feedback loop
+}
+
+const EMPTY_RAG: RAGResult = { context: "", referencedKbIds: [] };
+
+async function getRAGContext(query: string, tenantId: number): Promise<RAGResult> {
   // Expand the (short, colloquial) operator message into a manual-flavoured query for the
   // document search. KB search keeps the raw text. Best-effort — never blocks retrieval.
   const docQueryText = await expandQuery(query);
@@ -201,7 +217,7 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
     vectors = await generateEmbeddings([query, docQueryText]);
   } catch {
     // If embedding API is unavailable, degrade gracefully — agent still works without RAG.
-    return "";
+    return EMPTY_RAG;
   }
   const kbVector = embeddingToSql(vectors[0]);
   const docVector = embeddingToSql(vectors[1] ?? vectors[0]);
@@ -211,11 +227,12 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
 
   // Search resolved incident KB
   const kbResults = await prisma.$queryRaw<Array<{
+    id: number;
     problem_text: string;
     solution_text: string;
     similarity: number;
   }>>`
-    SELECT "problemText" AS problem_text, "solutionText" AS solution_text,
+    SELECT id, "problemText" AS problem_text, "solutionText" AS solution_text,
            1 - ("problemEmbedding" <=> ${kbVector}::vector) AS similarity
     FROM knowledge_base
     WHERE "tenantId" = ${tenantId}
@@ -246,7 +263,9 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
     docResults.filter((r) => r.similarity > DOC_SIM_THRESHOLD)
   ).slice(0, DOC_TOP_K);
 
-  if (relevantKb.length === 0 && relevantDoc.length === 0) return "";
+  const referencedKbIds = relevantKb.map((r) => r.id);
+
+  if (relevantKb.length === 0 && relevantDoc.length === 0) return EMPTY_RAG;
 
   const parts: string[] = [];
 
@@ -273,7 +292,7 @@ async function getRAGContext(query: string, tenantId: number): Promise<string> {
     );
   }
 
-  return parts.join("\n\n");
+  return { context: parts.join("\n\n"), referencedKbIds };
 }
 
 // HyDE-lite query expansion: rewrite the operator's colloquial message into a short,
@@ -331,6 +350,7 @@ CÓMO RESPONDER UN INCIDENTE:
 ESTADO DEL INCIDENTE:
 - En CADA respuesta, además del texto para el operador, llamá a la herramienta "update_event" con tu mejor evaluación del estado actual del incidente (status, prioridad, máquina si se sabe, y resolved).
 - Poné resolved=true SOLO cuando el operador haya confirmado que la solución funcionó.
+- Poné escalate=true (con una escalationReason breve) si el incidente necesita a un supervisor humano: prioridad crítica (riesgo de seguridad o parada de planta) o el operador pide hablar con una persona. Si escalás, decile al operador que avisás a su supervisor.
 - La herramienta es para uso interno del sistema: nunca menciones "update_event" ni el estado estructurado en el texto que ve el operador.`;
 }
 
@@ -377,13 +397,24 @@ async function persistConversation(
   eventId: number,
   existingMessages: ConversationMessage[],
   newMessages: ConversationMessage[],
-  eventUpdate: EventUpdate | undefined
+  eventUpdate: EventUpdate | undefined,
+  referencedKbIds: number[]
 ) {
   const allMessages = [...existingMessages, ...newMessages];
+
+  // One read for the fields we need to evolve across turns.
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { problemContent: true, tenantId: true, escalatedAt: true, referencedKbIds: true },
+  });
+
+  // Accumulate the KB entries surfaced across the whole conversation (deduped).
+  const mergedKbIds = Array.from(new Set([...(event?.referencedKbIds ?? []), ...referencedKbIds]));
 
   const updateData: Parameters<typeof prisma.event.update>[0]["data"] = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     conversationHistory: { messages: allMessages } as any,
+    referencedKbIds: { set: mergedKbIds },
     updatedAt: new Date(),
   };
 
@@ -393,27 +424,41 @@ async function persistConversation(
     if (eventUpdate.machineName) updateData.machineName = eventUpdate.machineName;
     if (eventUpdate.location) updateData.location = eventUpdate.location;
 
+    // Escalation to a human — set once, on the first trigger (tool flag or CRITICAL priority).
+    const shouldEscalate = eventUpdate.escalate || eventUpdate.priority === "CRITICAL";
+    if (shouldEscalate && event && !event.escalatedAt) {
+      updateData.escalatedAt = new Date();
+      updateData.escalationReason =
+        eventUpdate.escalationReason ??
+        (eventUpdate.priority === "CRITICAL" ? "Prioridad crítica" : "El operador pidió asistencia humana");
+    }
+
     if (eventUpdate.resolved) {
       updateData.status = "RESOLVED";
       updateData.resolvedAt = new Date();
 
       const lastAssistant = [...newMessages].reverse().find((m) => m.role === "assistant");
-      if (lastAssistant) {
+      if (lastAssistant && event) {
         updateData.solution = lastAssistant.content;
 
         // Create KB entry + embedding (fire and forget — don't block response)
-        const event = await prisma.event.findUnique({
-          where: { id: eventId },
-          select: { problemContent: true, tenantId: true },
-        });
+        createKBEntryWithEmbedding({
+          tenantId: event.tenantId,
+          eventId,
+          problemText: event.problemContent ?? "Incidente",
+          solutionText: lastAssistant.content,
+        }).catch((err) => console.error("[KB creation failed]", err));
 
-        if (event) {
-          createKBEntryWithEmbedding({
-            tenantId: event.tenantId,
-            eventId,
-            problemText: event.problemContent ?? "Incidente",
-            solutionText: lastAssistant.content,
-          }).catch((err) => console.error("[KB creation failed]", err));
+        // Feedback loop: the KB entries that were in context when this incident got resolved
+        // earned their keep — bump their effectiveness (capped at 10). Fire-and-forget.
+        if (mergedKbIds.length > 0) {
+          prisma
+            .$executeRaw`
+              UPDATE knowledge_base
+              SET "effectivenessScore" = LEAST(10, "effectivenessScore" + 1), "updatedAt" = now()
+              WHERE id IN (${Prisma.join(mergedKbIds)})
+            `
+            .catch((err) => console.error("[KB] effectivenessScore bump failed", err));
         }
       }
     }
@@ -433,8 +478,10 @@ async function createKBEntryWithEmbedding({
   problemText: string;
   solutionText: string;
 }) {
+  // effectivenessScore uses the schema default (5) and evolves via the feedback loop
+  // (bumped when this entry later helps resolve another incident).
   const entry = await prisma.knowledgeBase.create({
-    data: { tenantId, eventId, problemText, solutionText, effectivenessScore: 7 },
+    data: { tenantId, eventId, problemText, solutionText },
     select: { id: true },
   });
 
