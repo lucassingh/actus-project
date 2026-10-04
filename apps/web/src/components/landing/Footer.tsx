@@ -92,13 +92,21 @@ export function Footer() {
         </div>
         <div className="mt-[30px] flex flex-col items-start justify-between gap-4 border-t border-ink-800 pb-[30px] pt-6 text-sm text-ink-500 sm:flex-row sm:items-center">
           <p>© {year} Actus. Todos los derechos reservados.</p>
-          <a
-            href="#home"
-            className="inline-flex items-center gap-1.5 transition-colors duration-150 hover:text-ink-100 focus-visible:text-ink-100 focus-visible:outline-none"
-          >
-            Volver arriba
-            <ArrowUp className="h-4 w-4" aria-hidden="true" />
-          </a>
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <a href="/privacidad" className="transition-colors duration-150 hover:text-ink-100 focus-visible:text-ink-100 focus-visible:outline-none">
+              Privacidad
+            </a>
+            <a href="/terminos" className="transition-colors duration-150 hover:text-ink-100 focus-visible:text-ink-100 focus-visible:outline-none">
+              Términos
+            </a>
+            <a
+              href="#home"
+              className="inline-flex items-center gap-1.5 transition-colors duration-150 hover:text-ink-100 focus-visible:text-ink-100 focus-visible:outline-none"
+            >
+              Volver arriba
+              <ArrowUp className="h-4 w-4" aria-hidden="true" />
+            </a>
+          </nav>
         </div>
       </div>
     </footer>
