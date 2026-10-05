@@ -1,110 +1,135 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { generateEmbedding, embeddingToSql } from "@/lib/embeddings";
+import { generateEmbeddings, embeddingToSql } from "@/lib/embeddings";
+import { extractPdfPages } from "@/lib/pdf";
+import { chunkPages } from "@/lib/chunking";
 
-const CHUNK_WORDS = 350;   // words per chunk
-const CHUNK_OVERLAP = 40;  // words overlap between consecutive chunks
-const MAX_CHUNKS = 80;     // safety cap to avoid embedding API timeouts
+// How many chunks to embed per Inngest step. One OpenAI embeddings call per batch; each
+// completed batch is an Inngest checkpoint, so a transient failure resumes mid-document
+// instead of re-embedding everything.
+export const EMBED_BATCH_SIZE = 100;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Main entry point — call this from the Server Action
+// Ingestion is a two-phase pipeline:
+//   1. createFactoryDoc()  — synchronous, on upload: parse + chunk + persist chunk rows
+//      (no embeddings). This is CPU-only and fast; the old timeout risk was the serial
+//      embedding calls, not the parsing.
+//   2. embedPendingChunks() — durable, driven by the process-factory-doc Inngest function:
+//      embeds chunks in batches with retries and resume. See inngest/functions.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function ingestFactoryDocPdf(
+export async function createFactoryDoc(
   tenantId: number,
   fileName: string,
-  fileBuffer: Buffer,
-): Promise<{ docId: number; chunksCreated: number; pageCount: number }> {
-  // 1. Parse PDF
-  // Required lazily: pdf-parse -> pdfjs-dist tries to set up a canvas backend at
-  // module load time, which crashes Next's static page-data collection (no DOM
-  // globals like DOMMatrix at build time) if required at the top of this file.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse");
-  const parsed = await pdfParse(fileBuffer);
-  const rawText: string = parsed.text ?? "";
-  const pageCount: number = parsed.numpages ?? 0;
+  fileBuffer: Buffer
+): Promise<{ docId: number; chunkCount: number; pageCount: number }> {
+  // Parse first: if the PDF has no extractable text (scanned), throw before creating any
+  // row so the upload surfaces a clean error instead of leaving an empty doc behind.
+  const { pageCount, pages } = await extractPdfPages(fileBuffer);
+  const chunks = chunkPages(pages);
 
-  if (!rawText.trim()) {
-    throw new Error(
-      "El PDF no tiene texto extraíble. Los PDFs escaneados (solo imágenes) no están soportados aún."
-    );
+  if (chunks.length === 0) {
+    throw new Error("El PDF no produjo ningún fragmento indexable.");
   }
 
-  // 2. Create FactoryDoc record (marks as not processed yet)
   const doc = await prisma.factoryDoc.create({
     data: {
       tenantId,
       name: fileName,
       fileSize: fileBuffer.byteLength,
       pageCount,
+      chunkCount: chunks.length, // total planned; embedding happens asynchronously
       isProcessed: false,
+      status: "PROCESSING",
     },
     select: { id: true },
   });
 
-  // 3. Chunk the text
-  const chunks = splitIntoChunks(rawText);
-  const capped = chunks.slice(0, MAX_CHUNKS);
-
-  // 4. Embed each chunk and persist
-  let chunksCreated = 0;
-  for (let i = 0; i < capped.length; i++) {
-    const content = capped[i];
-    try {
-      const created = await prisma.factoryDocChunk.create({
-        data: { tenantId, docId: doc.id, content, chunkIdx: i },
-        select: { id: true },
-      });
-
-      const embedding = await generateEmbedding(content);
-      const vector = embeddingToSql(embedding);
-
-      await prisma.$executeRaw`
-        UPDATE factory_doc_chunks
-        SET embedding = ${vector}::vector
-        WHERE id = ${created.id}
-      `;
-
-      chunksCreated++;
-    } catch (err) {
-      // If one chunk fails (e.g. embedding error), keep going with the rest
-      console.error(`[factory-doc] chunk ${i} embedding failed:`, err);
-    }
+  // Bulk-insert chunk rows with embedding left NULL. The Inngest function fills embeddings.
+  // Insert in batches to keep each statement small for the Neon driver.
+  const DB_INSERT_BATCH = 500;
+  for (let i = 0; i < chunks.length; i += DB_INSERT_BATCH) {
+    const slice = chunks.slice(i, i + DB_INSERT_BATCH);
+    await prisma.factoryDocChunk.createMany({
+      data: slice.map((c) => ({
+        tenantId,
+        docId: doc.id,
+        content: c.content,
+        pageNum: c.pageNum,
+        chunkIdx: c.chunkIdx,
+      })),
+    });
   }
 
-  // 5. Mark doc as processed
-  await prisma.factoryDoc.update({
-    where: { id: doc.id },
-    data: { isProcessed: true, chunkCount: chunksCreated },
-  });
+  return { docId: doc.id, chunkCount: chunks.length, pageCount };
+}
 
-  return { docId: doc.id, chunksCreated, pageCount };
+/**
+ * Embed the next batch of not-yet-embedded chunks for a document. Idempotent and
+ * resumable: it only touches chunks whose embedding IS NULL, so a retried Inngest step
+ * skips the ones an earlier attempt already completed.
+ */
+export async function embedPendingChunks(
+  docId: number,
+  batchSize: number = EMBED_BATCH_SIZE
+): Promise<{ processed: number; remaining: number }> {
+  const pending = await prisma.$queryRaw<Array<{ id: number; content: string }>>`
+    SELECT id, content
+    FROM factory_doc_chunks
+    WHERE "docId" = ${docId} AND embedding IS NULL
+    ORDER BY "chunkIdx"
+    LIMIT ${batchSize}
+  `;
+
+  if (pending.length === 0) return { processed: 0, remaining: 0 };
+
+  const embeddings = await generateEmbeddings(pending.map((c) => c.content));
+
+  // Single UPDATE ... FROM (VALUES ...) per batch instead of one round-trip per chunk.
+  const rows = pending.map(
+    (c, i) => Prisma.sql`(${c.id}::int, ${embeddingToSql(embeddings[i])})`
+  );
+  await prisma.$executeRaw`
+    UPDATE factory_doc_chunks AS c
+    SET embedding = v.emb::vector
+    FROM (VALUES ${Prisma.join(rows)}) AS v(id, emb)
+    WHERE c.id = v.id
+  `;
+
+  const remaining = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM factory_doc_chunks
+    WHERE "docId" = ${docId} AND embedding IS NULL
+  `;
+
+  return { processed: pending.length, remaining: Number(remaining[0]?.count ?? 0) };
+}
+
+export async function markDocIndexed(docId: number): Promise<void> {
+  const embedded = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM factory_doc_chunks
+    WHERE "docId" = ${docId} AND embedding IS NOT NULL
+  `;
+  await prisma.factoryDoc.update({
+    where: { id: docId },
+    data: {
+      isProcessed: true,
+      status: "INDEXED",
+      error: null,
+      chunkCount: Number(embedded[0]?.count ?? 0),
+    },
+  });
+}
+
+export async function markDocFailed(docId: number, message: string): Promise<void> {
+  await prisma.factoryDoc.update({
+    where: { id: docId },
+    data: { status: "FAILED", isProcessed: false, error: message },
+  });
 }
 
 export async function deleteFactoryDoc(docId: number, tenantId: number): Promise<void> {
   // Chunks cascade-delete via FK
   await prisma.factoryDoc.deleteMany({ where: { id: docId, tenantId } });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function splitIntoChunks(text: string): string[] {
-  // Normalize whitespace: collapse multiple spaces/newlines into single space
-  const normalized = text.replace(/\s+/g, " ").trim();
-  const words = normalized.split(" ");
-
-  const chunks: string[] = [];
-  let i = 0;
-
-  while (i < words.length) {
-    const slice = words.slice(i, i + CHUNK_WORDS).join(" ").trim();
-    if (slice.length > 30) {
-      chunks.push(slice);
-    }
-    i += CHUNK_WORDS - CHUNK_OVERLAP;
-  }
-
-  return chunks;
 }

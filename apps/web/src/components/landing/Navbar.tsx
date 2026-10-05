@@ -9,6 +9,7 @@ const items: CardNavItem[] = [
     links: [
       { label: "El desafío", href: "#desafio", ariaLabel: "Ir a El desafío" },
       { label: "La solución", href: "#solucion", ariaLabel: "Ir a La solución" },
+      { label: "Capacidades", href: "#capacidades", ariaLabel: "Ir a Capacidades" },
     ],
   },
   {
@@ -23,7 +24,7 @@ const items: CardNavItem[] = [
   {
     label: "Cuenta",
     bgColor: "#EA580E",
-    textColor: "#0A0D1A",
+    textColor: "#FFFFFF",
     links: [
       { label: "Iniciar sesión", href: "/sign-in", ariaLabel: "Iniciar sesión en Actus" },
       { label: "Agendar demo", href: "#contacto", ariaLabel: "Agendar una demo" },
@@ -42,7 +43,7 @@ export function Navbar() {
       baseColor="rgba(16, 21, 42, 0.92)"
       menuColor="#E6E8F2"
       buttonBgColor="#EA580E"
-      buttonTextColor="#0A0D1A"
+      buttonTextColor="#FFFFFF"
       className="[&_nav]:ring-1 [&_nav]:ring-white/10"
     />
   );

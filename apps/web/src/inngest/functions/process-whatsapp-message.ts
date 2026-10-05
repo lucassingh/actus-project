@@ -3,7 +3,7 @@ import { inngest } from "../client";
 import { whatsappMessageReceived } from "../events";
 import { prisma } from "@/lib/prisma";
 import { processAgentMessage } from "@/services/agent.service";
-import { sendWhatsAppMessage, downloadWhatsAppMedia } from "@/services/whatsapp.service";
+import { sendWhatsAppMessage, sendWhatsAppImage, downloadWhatsAppMedia } from "@/services/whatsapp.service";
 import type { AgentMessageRequest, MessageType } from "@actus/types";
 
 const ACTIVE_STATUSES = ["DRAFT", "OPEN", "IN_PROGRESS"] as const;
@@ -21,9 +21,9 @@ const PROCESSING_FAILED =
  * failure (Claude overloaded, Whisper timeout) is retried instead of silently dropping
  * the operator's message. `onFailure` notifies the operator once retries are exhausted.
  *
- * Known limitation: `process-agent-message` creates the Event internally, so a retry of
- * that step after a mid-way failure can create a duplicate Event. Acceptable trade-off
- * vs. losing the message; fine-grained idempotency is future work.
+ * Event creation is idempotent across retries: the inbound wamid is passed as
+ * `sourceMessageId`, and resolveEvent reuses the event with that id instead of creating a
+ * duplicate (see agent.service.ts).
  */
 export const processWhatsAppMessage = inngest.createFunction(
   {
@@ -55,7 +55,7 @@ export const processWhatsAppMessage = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
-    const { waId, messageType, textBody, mediaId, mediaMimeType } = event.data;
+    const { waId, webhookEventId, messageType, textBody, mediaId, mediaMimeType } = event.data;
 
     const user = await step.run("resolve-user", async () => {
       const u = await prisma.user.findUnique({ where: { phoneNumber: waId } });
@@ -69,9 +69,9 @@ export const processWhatsAppMessage = inngest.createFunction(
 
     // Media download + agent run happen in one step so the base64 payload never crosses
     // Inngest's serialized step state, and a resend retry below won't re-run this.
-    const reply = await step.run("process-agent-message", async () => {
+    const agent = await step.run("process-agent-message", async () => {
       const built = await buildAgentInput({ messageType, textBody, mediaId, mediaMimeType });
-      if ("reject" in built) return built.reject;
+      if ("reject" in built) return { reply: built.reject, imageUrl: null };
 
       const activeEvent = await prisma.event.findFirst({
         where: {
@@ -85,13 +85,22 @@ export const processWhatsAppMessage = inngest.createFunction(
 
       const result = await processAgentMessage(
         { ...built.input, eventId: activeEvent?.id },
-        { userId: user.id, tenantId: user.tenantId }
+        // sourceMessageId (the wamid) makes event creation idempotent across step retries.
+        { userId: user.id, tenantId: user.tenantId, sourceMessageId: webhookEventId }
       );
-      return result.response;
+      return { reply: result.response, imageUrl: result.imageUrl ?? null };
     });
 
     // Separate step: a failed send is retried without re-running the agent.
-    await step.run("reply", () => sendWhatsAppMessage(waId, reply));
+    await step.run("reply", () => sendWhatsAppMessage(waId, agent.reply));
+
+    // A matching KB case may carry a reference image — send it after the text (F6).
+    // Its own step so a failed image send doesn't re-run the agent or the text reply.
+    if (agent.imageUrl) {
+      await step.run("reply-image", () =>
+        sendWhatsAppImage(waId, agent.imageUrl!, "Imagen de referencia de un caso similar.")
+      );
+    }
 
     return { status: "processed" as const };
   }

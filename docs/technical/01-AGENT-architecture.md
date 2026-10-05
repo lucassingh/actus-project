@@ -25,9 +25,10 @@ Operator's WhatsApp                    (legacy: Mobile App)
   │              against the live API, see 08-WHATSAPP-integration.md).
   │     image  → Claude API (vision) — this one is native and correct
   │
-  ├─ 2. KnowledgeBaseService.search(text, tenantId)
-  │     → pgvector cosine similarity on problem_embedding
-  │     → returns top 5 similar past incidents + solutions
+  ├─ 2. getRAGContext(text, tenantId) — pgvector cosine, tenant-isolated, threshold 0.70
+  │     → top 5 similar past incidents (knowledge_base.problem_embedding)
+  │     → top 3 manual fragments (factory_doc_chunks.embedding)
+  │     → both are injected into the system prompt (empty string if OpenAI/embeddings unavailable)
   │
   ├─ 3. Build system prompt
   │     → role + tenant context
@@ -54,7 +55,11 @@ Operator's WhatsApp                    (legacy: Mobile App)
 |---|---|---|
 | Text/image response | `claude-haiku-4-5-20251001` | Fast, cheap, sufficient for operator queries |
 | Audio transcription | `whisper-1` (OpenAI) | Claude has no audio input modality — see above |
-| Complex document analysis | `claude-sonnet-4-6` | Only for admin-initiated doc processing |
+| Embeddings (RAG + manuals) | `text-embedding-3-small` (OpenAI, 1536d) | Matches the pgvector(1536) columns |
+
+> Manual ingestion (`factory-doc.service.ts`) uses **no LLM** — it is `pdf-parse` (text
+> extraction, no OCR) + word-based chunking + embeddings. There is no Sonnet call anywhere in
+> the current code. Hardening this pipeline is tracked in `docs/TODO.md` → P1.
 
 ## System prompt structure
 
@@ -87,10 +92,34 @@ The `extractEventUpdate()` function strips this from the visible response and ma
 
 ## Knowledge base (RAG)
 
-- Embeddings generated via `text-embedding-3-small` (OpenAI, $0.02/1M tokens) or via Neon's built-in embedding support
-- Stored in `KnowledgeBase.problem_embedding` (pgvector `vector(1536)`)
-- Search: cosine similarity with tenant isolation
-- Entry created automatically when an event is resolved
+Two vector sources, both searched on every message in `getRAGContext()`:
+
+1. **Resolved incidents** — `knowledge_base."problemEmbedding"`, top 5. Entry created automatically
+   when an event is resolved (fire-and-forget embedding of the problem text). Searched with the
+   raw operator query (threshold 0.70).
+2. **Factory manuals** — `factory_doc_chunks.embedding`, over-fetch 10 → top 5 (threshold 0.55).
+   Supervisors upload PDFs in `/dashboard/factory-docs`; ingestion is a two-phase pipeline (see below).
+
+- Embeddings: `text-embedding-3-small` (OpenAI, 1536d).
+- Query expansion (HyDE-lite): the operator message is rewritten into a manual-flavoured query by
+  Haiku (`expandQuery()`) and embedded for the manual search; the raw message is used for the KB
+  search. Best-effort — any failure falls back to the raw query.
+- Search: pgvector cosine similarity, tenant-isolated (`WHERE "tenantId" = ?`). Manual chunks cite
+  the page (`pageNum`) when available. A reranking seam (`rerankDocChunks()`) is wired but currently
+  identity.
+- Degradation: if the embedding API is unavailable, `getRAGContext()` returns `""` and the agent
+  still answers (without RAG) — this is silent, so an expired/empty OpenAI key looks like "the bot
+  ignores the manuals".
+
+### Manual ingestion pipeline (`factory-doc.service.ts`)
+
+1. **On upload (synchronous):** `extractPdfPages()` (pdf-parse v2, per-page text) → `chunkPages()`
+   (structure-aware: chunks within each page, only breaks at line boundaries so tables survive,
+   carries `pageNum`, no chunk cap) → chunk rows persisted with `embedding` NULL. Scanned PDFs (no
+   extractable text) are rejected here (`ScannedPdfError`) — OCR is the seam left for later.
+2. **Durable embedding (Inngest `process-factory-doc`):** embeds the NULL chunks in batches of 100
+   (one OpenAI call per batch), resumable and retriable; updates `FactoryDoc.status`
+   (PENDING → PROCESSING → INDEXED | FAILED). The upload request never blocks on embedding.
 
 ## Cost estimate (MVP)
 

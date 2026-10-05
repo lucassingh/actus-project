@@ -35,6 +35,7 @@ model Tenant {
   knowledgeBase    KnowledgeBase[]
   factoryDocs      FactoryDoc[]
   factoryDocChunks FactoryDocChunk[]
+  machines         Machine[]
 
   @@map("tenants")
 }
@@ -102,9 +103,28 @@ model Event {
   conversationHistory Json?
   aiSuggestions       Json?
 
+  // machineName is kept as free-text (what the operator/agent said) and as a fallback when a
+  // report can't be matched to a registered Machine. machineId links to the real entity when
+  // the message's machine code/name resolves to one (see lib/machines.ts).
   machineName String?
+  machineId   Int?
   location    String?
   symptoms    String[]
+
+  // wamid of the WhatsApp message that created this event. Idempotency guard: a retried
+  // Inngest step reuses the event with this id instead of creating a duplicate. Unique, and
+  // nullable because events created outside the WhatsApp flow (e.g. dashboard) don't set it.
+  sourceMessageId String? @unique
+
+  // Escalation to a human: set once (first trigger) when priority is CRITICAL or the operator
+  // asks for a person. Surfaced in the supervisor dashboard. `escalatedAt` null = not escalated.
+  escalatedAt      DateTime?
+  escalationReason String?
+
+  // KB entries surfaced to the agent while handling this event (accumulated across turns).
+  // On resolution their effectivenessScore is bumped — the feedback loop that lets the KB
+  // learn which resolved-incident entries actually help close new incidents.
+  referencedKbIds Int[] @default([])
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -113,11 +133,13 @@ model Event {
   tenant             Tenant         @relation(fields: [tenantId], references: [id])
   creator            User           @relation("EventCreator", fields: [creatorId], references: [id])
   assignee           User?          @relation("EventAssignee", fields: [assigneeId], references: [id])
+  machine            Machine?       @relation(fields: [machineId], references: [id], onDelete: SetNull)
   knowledgeBaseEntry KnowledgeBase?
 
   @@index([tenantId])
   @@index([creatorId])
   @@index([status])
+  @@index([machineId])
   @@map("events")
 }
 
@@ -171,6 +193,13 @@ model KnowledgeBase {
   timeToResolveMin   Int?
   tags               String[]
 
+  // Optional reference image the supervisor attaches to illustrate the solution. Stored as
+  // bytes and served from the public /api/media/kb/[id] route so WhatsApp can fetch it when the
+  // agent sends this case back to an operator (F6). Bytes are only loaded when explicitly
+  // selected, so RAG/list queries don't pay for them.
+  imageData     Bytes?
+  imageMimeType String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -183,7 +212,8 @@ model KnowledgeBase {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FACTORY DOC
-// Uploaded manuals/procedures. Ingested into KB (post-MVP).
+// Uploaded manuals/procedures. Chunked + embedded into factory_doc_chunks and searched
+// via RAG on every operator message (see factory-doc.service.ts + agent.service.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 
 model FactoryDoc {
@@ -196,6 +226,12 @@ model FactoryDoc {
   pageCount   Int?
   chunkCount  Int      @default(0)
   isProcessed Boolean  @default(false)
+  // Ingestion lifecycle: PENDING → PROCESSING → INDEXED | FAILED.
+  // Parsing + chunking happen synchronously on upload; embedding is durable work
+  // handed to Inngest (process-factory-doc), so a doc can sit in PROCESSING for a bit.
+  // `error` carries a human-readable reason when status = FAILED (e.g. scanned PDF).
+  status      String   @default("PENDING")
+  error       String?
   createdAt   DateTime @default(now())
 
   tenant Tenant          @relation(fields: [tenantId], references: [id])
@@ -238,4 +274,31 @@ model WhatsAppInboundMessage {
   receivedAt DateTime @default(now())
 
   @@map("whatsapp_inbound_messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MACHINE
+// A real piece of equipment in a tenant's plant. `code` is the human identifier that
+// goes in the QR sticker and is matched against operator messages to link an incident
+// to the machine (see lib/machines.ts). Scanning the QR opens WhatsApp to the bot with
+// "Máquina <code>: " pre-filled; typing the code by hand resolves the same way.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Machine {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int
+  name      String
+  code      String
+  sector    String?
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  events Event[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("machines")
 }

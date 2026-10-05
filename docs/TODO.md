@@ -1,165 +1,88 @@
-# Actus V2 — TODO para producción
+# Actus — TODO / Estado
 
-Estado al 29/06/2026. Todo lo del MVP core está implementado. Lo que sigue es para dejarlo deployable y operable sin intervención manual.
-
----
-
-## 🔴 P0 — Hacer primero (30 min en total)
-
-### 1. Agregar OpenAI API key
-```
-apps/web/.env.local → OPENAI_API_KEY=sk-...
-```
-Sin esto el RAG no funciona (el agente trabaja pero no busca en historial ni en manuales).
-
-### 2. Rate limit en el endpoint del agente
-**Archivo:** `apps/web/src/app/api/v1/agent/message/route.ts`  
-Agregar un check antes de llamar al agente: máximo N requests por usuario por minuto.
-Opción simple: usar `upstash/ratelimit` (gratis tier) o un check en DB por ventana de tiempo.
-
-### 3. Límite de iteraciones por evento
-**Archivo:** `apps/web/src/services/agent.service.ts` → función `persistConversation`  
-Agregar antes de procesar:
-```typescript
-const MSG_LIMIT = 30;
-if (history.messages.length >= MSG_LIMIT) {
-  throw new Error("Este evento alcanzó el límite de mensajes. Cerralo y abrí uno nuevo.");
-}
-```
-Retornar ese error al mobile con status 422 y mostrar mensaje al operador.
+Estado al **2026-10-02** (post-auditoría). Arquitectura: **WhatsApp + dashboard web Next.js**, desplegada en Vercel (`actus-project-web.vercel.app`, auto-deploy desde `main`). La app mobile (Expo) fue eliminada — ver `docs/technical/08-WHATSAPP-integration.md`.
 
 ---
 
-## 🟠 P1 — Deploy (necesario para salir de localhost)
-
-### 4. Deploy apps/web en Vercel
-1. `vercel login` → conectar repo
-2. Configurar variables de entorno en Vercel dashboard:
-   - `DATABASE_URL`
-   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-   - `CLERK_SECRET_KEY`
-   - `ANTHROPIC_API_KEY`
-   - `OPENAI_API_KEY`
-3. Configurar dominio (ej: `app.actus.com.ar`)
-4. Verificar que `apps/landing` apunte a la URL de producción
-
-### 5. Actualizar URL base en la mobile
-**Archivo:** `actus-app/src/utils/constants.ts`
-```typescript
-// Cambiar esto:
-const API_HOST = '192.168.1.35';  // IP local
-const API_PORT = '3001';
-
-// Por esto (después del deploy):
-export const API_BASE_URL = 'https://tu-app.vercel.app/api/v1';
-```
-Idealmente usar una variable de entorno de Expo (`EXPO_PUBLIC_API_URL`).
-
-### 6. EAS Build — app Android para distribución interna
-```bash
-cd actus-app
-npm install -g eas-cli
-eas login
-eas build:configure
-eas build --platform android --profile preview
-```
-Genera un `.apk` que se instala directo en el celular sin Play Store.
-Referencia: https://docs.expo.dev/build/introduction/
-
----
-
-## 🟠 P2 — Admin pages (onboarding de clientes sin ir a Clerk/Prisma)
-
-Hoy para dar de alta un cliente nuevo hay que:
-- Ir a Clerk → crear org manualmente
-- Ir a Prisma Studio → crear Tenant
-
-Con estas páginas lo hace el admin desde el dashboard:
-
-### 7. `/dashboard/tenants` — lista de todas las empresas
-**Archivo a crear:** `apps/web/src/app/dashboard/tenants/page.tsx`  
-Query: `prisma.tenant.findMany()` (solo ADMIN ve esta página)  
-Mostrar: nombre, código, plan, cantidad de operadores, fecha de creación
-
-### 8. `/dashboard/tenants/create` — crear empresa nueva
-**Archivo a crear:** `apps/web/src/app/dashboard/tenants/create/page.tsx`  
-Server Action que:
-1. Crea Org en Clerk (`clerkClient().organizations.createOrganization(...)`)
-2. Invita al supervisor como `org:admin`
-3. Crea `Tenant` en Prisma con el `clerkOrgId`
-
-### 9. `/dashboard/supervisors` — lista de supervisores
-**Archivo a crear:** `apps/web/src/app/dashboard/supervisors/page.tsx`  
-Query: `prisma.user.findMany({ where: { role: "SUPERVISOR" } })` — todos los tenants
-
----
-
-## 🟡 P3 — UX y docs
-
-### 10. Loading state en upload de PDFs
-**Archivo:** `apps/web/src/app/dashboard/factory-docs/page.tsx`  
-El form necesita un Client Component con estado `isUploading` para mostrar spinner.
-Actualmente el supervisor no ve feedback durante los 10-60 seg del procesamiento.
-Solución: extraer el form a un `"use client"` component con `useFormStatus()` de React.
-
-### 11. Error boundaries en el dashboard
-Agregar `error.tsx` en `apps/web/src/app/dashboard/` para que los crashes muestren un mensaje amigable en vez de la pantalla de error de Next.js.
-
-### 12. `docs/technical/06-DEPLOYMENT.md`
-Documentar el proceso completo de deploy: Vercel + EAS + variables de entorno + configuración de Clerk para producción.
-
----
-
-## Estado actual del sistema (qué YA funciona)
+## ✅ Ya funciona (no reescribir salvo para mejorar)
 
 | Feature | Estado |
 |---|---|
-| Auth web (Clerk dashboard) | ✅ |
-| Auth mobile (Clerk Expo) | ✅ |
-| Multi-tenancy (Clerk Orgs = Tenants) | ✅ |
-| Invitar operadores desde dashboard | ✅ |
-| Agente: texto / audio / imagen | ✅ |
+| Webhook WhatsApp (HMAC, dedupe `wamid`, ack rápido) | ✅ |
+| Procesamiento durable con Inngest (reintentos 3, throttle 15/min por operario, concurrency 1, Sentry) | ✅ |
+| Agente: texto + imagen (visión, Claude Haiku) | ✅ |
+| Agente: audio (Whisper `whisper-1`) | ✅ código / ⏳ requiere crédito OpenAI |
 | Guardrail off-topic | ✅ |
-| RAG desde incidentes resueltos | ✅ (requiere OpenAI key) |
-| RAG desde manuales PDF | ✅ (requiere OpenAI key) |
-| Upload de PDFs en dashboard | ✅ |
-| Dashboard: lista de eventos | ✅ |
-| Dashboard: detalle de evento + conversación | ✅ |
-| Dashboard: lista de operadores | ✅ |
-| Mobile: lista de eventos + filtros | ✅ |
-| Mobile: crear evento (chat con agente) | ✅ |
-| Mobile: detalle de evento | ✅ |
-| Super admin (Actus owners) | ✅ via Clerk publicMetadata |
-| Admin: crear/listar tenants | ❌ P2 |
-| Admin: crear/listar supervisors | ❌ P2 |
-| Rate limiting | ❌ P0 |
-| Límite iteraciones/evento | ❌ P0 |
-| Deploy Vercel | ❌ P1 |
-| EAS Build Android | ❌ P1 |
+| RAG de incidentes resueltos (`knowledge_base`) | ✅ (requiere OpenAI key) |
+| RAG de manuales PDF (`factory_doc_chunks`) | ✅ (con limitaciones — ver P1) |
+| Upload de PDFs en dashboard (`/dashboard/factory-docs`) | ✅ |
+| Límite de mensajes por evento (`MAX_EVENT_MESSAGES=40`) | ✅ (reemplaza el viejo P0 "límite de iteraciones") |
+| Dashboard: eventos (lista/detalle/filtros), KB | ✅ |
+| Dashboard: alta de operarios (supervisor → `phoneNumber`, sin Clerk) | ✅ |
+| Dashboard admin: crear/listar tenants y supervisores | ✅ (era P2, ya hecho) |
+| Multi-tenancy (Clerk Orgs = Tenants) | ✅ |
+| Deploy en Vercel | ✅ (era P1, ya hecho) |
 
 ---
 
-## Para arrancar mañana
+## 🔴 P0 — Bloqueantes del piloto
 
-El orden más lógico:
-1. Poner la `OPENAI_API_KEY` → testear que el RAG funcione subiendo un PDF
-2. Agregar rate limit + límite de iteraciones (30 min)
-3. Deploy en Vercel
-4. EAS Build del .apk
-5. Admin pages si ya hay un segundo cliente que dar de alta
+1. **Crédito OpenAI** → `OPENAI_API_KEY` con saldo en `apps/web/.env.local` + Vercel. Sin esto: no hay embeddings (el RAG degrada a vacío de forma silenciosa) ni Whisper (audio). Texto e imagen funcionan igual.
+2. **Verificación de empresa en Meta** (depende de regularizar monotributo) → salir del número sandbox (+1 555 660 8866, lista blanca de 5 números, bug `131030`). **Para el piloto en Essen el sandbox alcanza**; esto es para abrir a producción real.
+3. **16 vulnerabilidades npm** (1 crítica, 10 high) reportadas tras `npm install` → correr `npm audit` y resolver lo que corresponda antes de producción.
 
 ---
 
-## Archivos clave para orientarse
+## 🟠 P1 — Robustez del RAG de manuales (prioridad técnica #1) — ✅ Etapa 2 (2026-10-03)
+
+Reescrito el pipeline de ingesta + búsqueda (branch `etapa-2-rag-robustez`):
+
+- ✅ **Sin tope de chunks** — se quitó `MAX_CHUNKS = 80`; se indexa el documento completo.
+- ✅ **Chunking que respeta estructura** — `lib/chunking.ts` chunking por página, corta solo en límites de línea (las tablas de torques/códigos/repuestos quedan contiguas), con overlap. Reemplaza el flatten-a-una-línea + corte por palabras.
+- ✅ **`pageNum` poblado** — `lib/pdf.ts` extrae texto por página (pdf-parse v2); el bot ahora cita página.
+- ✅ **Ingesta durable en Inngest** — parseo+chunking síncronos (CPU, rápido); los embeddings (lo que daba timeout) se mueven a `process-factory-doc` en batches de 100, reintentables y reanudables. Estado del doc: PENDING→PROCESSING→INDEXED|FAILED, visible en el dashboard.
+- ✅ **Query mejorada** — reescritura HyDE-lite con Haiku (`expandQuery`), umbrales separados (KB 0.70 / docs 0.55) y over-fetch 10→top 5.
+- ✅ **Bug latente arreglado** — la SQL cruda de `getRAGContext` usaba columnas snake_case (`problem_embedding`, `doc_id`, `tenant_id`) que **no existen** (son camelCase citadas) → habría crasheado cada mensaje al cargar crédito OpenAI. También el `UPDATE knowledge_base`.
+
+**Diferido con seam listo (decisión del usuario, 2026-10-03):**
+- ⬜ **OCR** para PDFs escaneados — hoy se rechazan prolijamente (`ScannedPdfError` en `lib/pdf.ts`, ahí engancha Claude vision / OCR cloud). Para el piloto Essen: subir PDFs con texto seleccionable.
+- ⬜ **Reranking** — seam `rerankDocChunks()` en `agent.service.ts` (hoy identidad). Para el corpus chico del piloto alcanza con chunking + query expansion + over-fetch.
+
+> **Pendiente operativo:** correr la migración `20261003000000_factory_doc_ingestion_status` (`npm run db:deploy`) — agrega `status` y `error` a `factory_docs`.
+
+## 🟠 P2 — Robustez del agente — ✅ Etapa 3 (branch `etapa-3-robustez-agente`)
+
+**PR A — core (✅ hecho, 2026-10-03):**
+- ✅ **Tool use + Zod** reemplaza el regex `[[META|...]]`: Claude responde al operario y llama a la tool `update_event` en el mismo call; el input se valida con Zod (`services/agent-event-update.ts`). Si la tool viene malformada, degrada a "sin update" en vez de escribir basura.
+- ✅ **Idempotencia**: el evento guarda el wamid que lo creó (`Event.sourceMessageId`, único); un reintento del step de Inngest reutiliza ese evento en vez de duplicarlo. Migración `20261003010000_event_source_message_id`.
+- ✅ **Primeros tests** con **vitest** (`npm test`): 16 tests (chunking de manuales + parseo de la tool).
+
+**PR B — features de supervisión (✅ hecho, 2026-10-04):**
+- ✅ **Feedback loop**: `timesReferenced` sube cada vez que una entrada de KB se usa en el RAG; `effectivenessScore` ya no es hardcodeado (default 5) y sube (cap 10) para las entradas que estaban en contexto cuando se resolvió un incidente (atribución vía `Event.referencedKbIds`).
+- ✅ **Escalamiento a supervisor** → **flag en el dashboard** (decisión del usuario): `Event.escalatedAt`/`escalationReason`, trigger prioridad CRITICAL o el operario pide un humano (la tool `update_event` expone `escalate`). Badge "Escalado" en lista y banner en el detalle. WhatsApp al supervisor queda para cuando esté la verificación Meta.
+
+> **Pendiente operativo (al mergear):** correr `npm run db:deploy` — aplica 3 migraciones de la Etapa 3 (`event_source_message_id`, `event_feedback_escalation`) además de las de Etapa 2.
+
+## 🟡 P3 — UX / pulido / landing
+
+- Verificar loading state en upload de PDFs (`/dashboard/factory-docs`) — el procesamiento tarda 10-60s.
+- `error.tsx` en `apps/web/src/app/dashboard/` para crashes amigables.
+- **Rediseño de la landing**: unificar en un solo sistema de diseño (el del Hero). Ver `docs/technical/UI/landing/ui-landing.md`.
+
+---
+
+## Archivos clave
 
 | Qué buscar | Dónde está |
 |---|---|
 | Agente (Claude + RAG) | `apps/web/src/services/agent.service.ts` |
-| Ingesta de PDFs | `apps/web/src/services/factory-doc.service.ts` |
+| Ingesta de PDFs (manuales) | `apps/web/src/services/factory-doc.service.ts` |
 | Embeddings (OpenAI) | `apps/web/src/lib/embeddings.ts` |
-| Auth context (mobile) | `actus-app/src/context/AuthContext.tsx` |
-| API base URL (mobile) | `actus-app/src/utils/constants.ts` |
+| Transcripción (Whisper) | `apps/web/src/lib/transcription.ts` |
+| Webhook WhatsApp | `apps/web/src/app/api/v1/whatsapp/webhook/route.ts` |
+| Envío/descarga media WhatsApp | `apps/web/src/services/whatsapp.service.ts` |
+| Procesamiento durable | `apps/web/src/inngest/functions/process-whatsapp-message.ts` |
 | Schema de DB | `apps/web/prisma/schema.prisma` |
 | Variables de entorno | `apps/web/.env.local` (no está en git) |
-| Plan de implementación original | `docs/technical/07-IMPLEMENTATION-plan.md` |
-| Testing del circuito | `docs/technical/05-TESTING-circuit.md` |
+| Integración WhatsApp (gotchas) | `docs/technical/08-WHATSAPP-integration.md` |
+| Playbook de infra | `docs/technical/09-INFRA-PLAYBOOK.md` |

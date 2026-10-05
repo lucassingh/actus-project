@@ -1,10 +1,11 @@
 .main {
     margin-top: -10vh;
-    margin-bottom: 20vh; // Balanced margin for desktop
-    padding-bottom: 15vh; // Sufficient room for the last card to scroll out
+    // NOTE: use padding (inside the box), not margin-bottom. A bottom margin here collapses
+    // out of the parent `bg-canvas` wrapper and exposes the white <body> as a stray band
+    // between this (light) section and the dark section below.
+    padding-bottom: 35vh; // Room for the last card to scroll out + spacing to the next section
 
     @media (max-width: 768px) {
-        margin-bottom: 50px; // Tight spacing for mobile
-        padding-bottom: 5vh; // Minimal clearance for mobile viewport
+        padding-bottom: 10vh; // Clearance for mobile viewport
     }
 }
