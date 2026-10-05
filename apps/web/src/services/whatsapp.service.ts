@@ -37,6 +37,27 @@ export async function sendWhatsAppMessage(to: string, body: string): Promise<voi
   }
 }
 
+// Sends an image by public URL (Meta fetches `link` itself — it must be reachable from the
+// internet, so this only works against a deployed URL, not localhost). Used by the agent to
+// send a KB case's reference image (F6). Failures are logged but not thrown: a missing image
+// must never break the text reply the operator already got.
+export async function sendWhatsAppImage(to: string, link: string, caption?: string): Promise<void> {
+  const res = await fetch(graphUrl(`${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`), {
+    method: "POST",
+    headers: { ...authHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: toSandboxSendFormat(to),
+      type: "image",
+      image: caption ? { link, caption } : { link },
+    }),
+  });
+
+  if (!res.ok) {
+    console.error("[whatsapp.service] sendWhatsAppImage failed", res.status, await res.text());
+  }
+}
+
 // WhatsApp media isn't fetched by URL directly — first resolve a short-lived
 // download URL from the media ID, then fetch the bytes from that URL.
 export async function downloadWhatsAppMedia(mediaId: string): Promise<string> {

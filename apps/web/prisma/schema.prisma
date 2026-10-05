@@ -193,6 +193,13 @@ model KnowledgeBase {
   timeToResolveMin   Int?
   tags               String[]
 
+  // Optional reference image the supervisor attaches to illustrate the solution. Stored as
+  // bytes and served from the public /api/media/kb/[id] route so WhatsApp can fetch it when the
+  // agent sends this case back to an operator (F6). Bytes are only loaded when explicitly
+  // selected, so RAG/list queries don't pay for them.
+  imageData     Bytes?
+  imageMimeType String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
