@@ -52,8 +52,8 @@ export async function submitContact(
   const d = parsed.data;
   // onboarding@resend.dev works without verifying a domain, but only delivers to the Resend
   // account's own email — set CONTACT_TO_EMAIL to that address. Once a domain is verified,
-  // switch CONTACT_FROM_EMAIL to something like "Actus <hola@actus.ai>".
-  const to = process.env.CONTACT_TO_EMAIL ?? "hola@actus.ai";
+  // switch CONTACT_FROM_EMAIL to something like "Actus <soporte@actusagent.io>".
+  const to = process.env.CONTACT_TO_EMAIL ?? "soporte@actusagent.io";
   const from = process.env.CONTACT_FROM_EMAIL ?? "Actus <onboarding@resend.dev>";
 
   const text = [

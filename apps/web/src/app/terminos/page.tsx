@@ -84,7 +84,7 @@ export default function TerminosPage() {
 
       <h2>10. Contacto</h2>
       <p>
-        Ante cualquier consulta, escribinos a <a href="mailto:hola@actus.ai">hola@actus.ai</a>.
+        Ante cualquier consulta, escribinos a <a href="mailto:soporte@actusagent.io">soporte@actusagent.io</a>.
       </p>
     </LegalDoc>
   );

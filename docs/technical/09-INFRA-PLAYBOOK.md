@@ -170,6 +170,34 @@ durable con reintentos por step + `onFailure`.
 
 ---
 
+## 7. Conectar un dominio propio (ej. `actusagent.io`)
+
+Una vez montado todo en `*.vercel.app`, apuntar el dominio real. Los registros DNS van
+**TODOS en el panel del registrador** (ej. Hostinger); lo demás son paneles de cada servicio
++ env vars en Vercel.
+
+1. **Vercel → Settings → Domains → Add:** agregá el dominio a **Production**. Vercel muestra el
+   registro a cargar (hoy `A @ 216.198.79.1`; los legacy `cname.vercel-dns.com` / `76.76.21.21`
+   siguen valiendo). Cargalo en el DNS del registrador → *Refresh* hasta "Valid Configuration".
+   Marcá el dominio como **Primary** para que `*.vercel.app` redirija (307).
+2. **Env de la app:** `APP_PUBLIC_URL=https://<dominio>` (Prod + Preview). Se usa para los links
+   que terceros levantan de afuera: imágenes del bot que **descarga WhatsApp** y el link del
+   **email del resumen semanal**. El código cae a ese dominio por defecto si falta la env.
+3. **Clerk:** pasá a la **instancia de Production** y poné `pk_live_`/`sk_live_` en Vercel. Clerk
+   da **CNAMEs** (`clerk.`, `accounts.`, DKIM) → al DNS del registrador. ⚠️ Con keys de Development
+   en el dominio propio, el login no funciona.
+4. **Resend:** Domains → Add `<dominio>` → cargá sus **SPF/DKIM** en el DNS → cuando diga
+   *Verified*, seteá `CONTACT_FROM_EMAIL="Actus <soporte@<dominio>>"`. Sin dominio verificado,
+   Resend solo entrega al email de la cuenta (sandbox).
+5. **Inngest:** sync del endpoint en el entorno Production: `https://<dominio>/api/inngest`
+   (o auto-sync por la integración de Vercel). Verificá que aparezcan funciones y crons.
+6. **Meta/WhatsApp:** Callback URL del webhook → `https://<dominio>/api/v1/whatsapp/webhook`.
+7. **Código:** URLs públicas hardcodeadas + preview social (`app/opengraph-image.tsx` +
+   `metadataBase` en `app/layout.tsx`) apuntando al dominio; mailto públicos (footer, legal,
+   soporte) a `soporte@<dominio>`.
+
+---
+
 ## Gotchas (los que realmente pegamos)
 
 1. **P1013 "scheme not recognized"** en el build: `DIRECT_URL`/`DATABASE_URL` mal pegada
