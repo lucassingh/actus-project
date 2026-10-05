@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import styles from './styles.module.scss';
 import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'motion/react';
 
 export const CardParallax = ({ title, description, src, url, color, i, progress, range, targetScale }: any) => {
 
