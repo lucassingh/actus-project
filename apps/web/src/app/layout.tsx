@@ -17,9 +17,28 @@ const inter = Inter({
   display: "swap",
 });
 
+const SITE_URL = "https://actusagent.io";
+const TITLE = "Actus IA | El Conocimiento Industrial Permanente";
+const DESCRIPTION =
+  "El asistente de mantenimiento industrial por WhatsApp: captura, organiza y aplica el conocimiento de tu planta.";
+
 export const metadata: Metadata = {
-  title: "Actus IA | El Conocimiento Industrial Permanente",
-  description: "Actus IA: El agente inteligente que captura, organiza y aplica el conocimiento de mantenimiento industrial.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    locale: "es_AR",
+    url: "/",
+    siteName: "Actus",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
