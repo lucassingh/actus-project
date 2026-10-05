@@ -13,7 +13,7 @@ export default function PrivacidadPage() {
         Esta política explica qué datos personales trata Actus (“Actus”, “nosotros”), con qué fines y
         cómo los protegemos. Actus es un asistente de mantenimiento industrial: los operarios de una
         planta reportan incidentes por WhatsApp y los supervisores los gestionan desde un panel web.
-        Para consultas sobre privacidad podés escribirnos a <a href="mailto:hola@actus.ai">hola@actus.ai</a>.
+        Para consultas sobre privacidad podés escribirnos a <a href="mailto:soporte@actusagent.io">soporte@actusagent.io</a>.
       </p>
 
       <h2>1. Responsable del tratamiento</h2>
@@ -61,7 +61,7 @@ export default function PrivacidadPage() {
       <p>
         De acuerdo con la Ley 25.326 de Protección de Datos Personales de Argentina, podés ejercer tus
         derechos de acceso, rectificación, actualización y supresión de tus datos escribiéndonos a{" "}
-        <a href="mailto:hola@actus.ai">hola@actus.ai</a>. La Agencia de Acceso a la Información Pública
+        <a href="mailto:soporte@actusagent.io">soporte@actusagent.io</a>. La Agencia de Acceso a la Información Pública
         (AAIP) es el organismo de control y atiende las denuncias respecto del incumplimiento de las
         normas de protección de datos.
       </p>
@@ -85,7 +85,7 @@ export default function PrivacidadPage() {
       <h2>10. Contacto</h2>
       <p>
         Por cualquier consulta sobre esta política o sobre tus datos, escribinos a{" "}
-        <a href="mailto:hola@actus.ai">hola@actus.ai</a>.
+        <a href="mailto:soporte@actusagent.io">soporte@actusagent.io</a>.
       </p>
     </LegalDoc>
   );

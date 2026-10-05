@@ -293,7 +293,7 @@ function SidebarContent({
       {/* Footer: support (animated brand gradient), 10px, hairline, 10px, sign-out */}
       <div className={cn("flex shrink-0 flex-col gap-2.5 p-2.5", collapsed && "items-center")}>
         <a
-          href="mailto:soporte@actus-ia.com"
+          href="mailto:soporte@actusagent.io"
           title={collapsed ? "Soporte" : undefined}
           aria-label={collapsed ? "Soporte" : undefined}
           className={cn(
