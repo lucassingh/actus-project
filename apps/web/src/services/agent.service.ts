@@ -46,7 +46,7 @@ export async function processAgentMessage(
   }
 
   // 4. Get RAG context from knowledge base + manuals
-  const { context: ragContext, referencedKbIds } = await getRAGContext(userText, context.tenantId);
+  const { context: ragContext, referencedKbIds, imageUrl } = await getRAGContext(userText, context.tenantId);
 
   // Feedback loop: bump the usage counter for every KB entry surfaced to the agent.
   // Fire-and-forget — a counter update must never delay (or fail) the operator's reply.
@@ -95,6 +95,7 @@ export async function processAgentMessage(
     response: cleanResponse,
     eventId: event.id,
     eventUpdate: eventUpdate ?? null,
+    imageUrl,
   };
 }
 
@@ -206,13 +207,25 @@ const DOC_SIM_THRESHOLD = 0.55;
 const DOC_OVERFETCH = 10;
 const DOC_TOP_K = 5;
 const KB_TOP_K = 5;
+// Only attach a case's reference image when the match is strong — a loosely-related case's
+// photo would confuse more than help.
+const KB_IMAGE_THRESHOLD = 0.75;
+
+// Public base URL where /api/media is reachable from the internet (WhatsApp fetches it).
+// Must be the deployed URL, not localhost. Override with APP_PUBLIC_URL if the domain changes.
+const PUBLIC_BASE_URL = process.env.APP_PUBLIC_URL ?? "https://actus-project-web.vercel.app";
+
+function kbImageUrl(kbId: number): string {
+  return `${PUBLIC_BASE_URL.replace(/\/$/, "")}/api/media/kb/${kbId}`;
+}
 
 interface RAGResult {
   context: string;
   referencedKbIds: number[]; // KB entries surfaced to the agent — drives the feedback loop
+  imageUrl: string | null; // reference image of the best-matching KB case, if any (F6)
 }
 
-const EMPTY_RAG: RAGResult = { context: "", referencedKbIds: [] };
+const EMPTY_RAG: RAGResult = { context: "", referencedKbIds: [], imageUrl: null };
 
 async function getRAGContext(query: string, tenantId: number): Promise<RAGResult> {
   // Expand the (short, colloquial) operator message into a manual-flavoured query for the
@@ -239,8 +252,10 @@ async function getRAGContext(query: string, tenantId: number): Promise<RAGResult
     problem_text: string;
     solution_text: string;
     similarity: number;
+    has_image: boolean;
   }>>`
     SELECT id, "problemText" AS problem_text, "solutionText" AS solution_text,
+           ("imageData" IS NOT NULL) AS has_image,
            1 - ("problemEmbedding" <=> ${kbVector}::vector) AS similarity
     FROM knowledge_base
     WHERE "tenantId" = ${tenantId}
@@ -273,6 +288,11 @@ async function getRAGContext(query: string, tenantId: number): Promise<RAGResult
 
   const referencedKbIds = relevantKb.map((r) => r.id);
 
+  // Attach the reference image of the best (closest) KB case that has one and matched strongly.
+  // relevantKb is already ordered best-first.
+  const imageMatch = relevantKb.find((r) => r.has_image && r.similarity > KB_IMAGE_THRESHOLD);
+  const imageUrl = imageMatch ? kbImageUrl(imageMatch.id) : null;
+
   if (relevantKb.length === 0 && relevantDoc.length === 0) return EMPTY_RAG;
 
   const parts: string[] = [];
@@ -300,7 +320,7 @@ async function getRAGContext(query: string, tenantId: number): Promise<RAGResult
     );
   }
 
-  return { context: parts.join("\n\n"), referencedKbIds };
+  return { context: parts.join("\n\n"), referencedKbIds, imageUrl };
 }
 
 // HyDE-lite query expansion: rewrite the operator's colloquial message into a short,

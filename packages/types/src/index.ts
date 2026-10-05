@@ -92,6 +92,8 @@ export interface AgentMessageResponse {
   response: string;
   eventId: number;
   eventUpdate: EventUpdate | null;
+  // Public URL of a KB case's reference image to send after the text reply (F6), or null.
+  imageUrl?: string | null;
 }
 
 export interface EventUpdate {

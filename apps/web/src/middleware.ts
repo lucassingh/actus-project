@@ -10,6 +10,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks(.*)",
   "/api/v1/whatsapp/webhook(.*)", // authenticated via HMAC signature, not a Clerk session
   "/api/inngest(.*)", // Inngest serve endpoint — authenticated via Inngest signing key
+  "/api/media(.*)", // public KB reference images — WhatsApp (Meta) fetches these server-side
 ]);
 
 const isApiRoute = createRouteMatcher(["/api/v1(.*)"]);

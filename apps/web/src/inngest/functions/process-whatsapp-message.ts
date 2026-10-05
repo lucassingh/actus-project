@@ -3,7 +3,7 @@ import { inngest } from "../client";
 import { whatsappMessageReceived } from "../events";
 import { prisma } from "@/lib/prisma";
 import { processAgentMessage } from "@/services/agent.service";
-import { sendWhatsAppMessage, downloadWhatsAppMedia } from "@/services/whatsapp.service";
+import { sendWhatsAppMessage, sendWhatsAppImage, downloadWhatsAppMedia } from "@/services/whatsapp.service";
 import type { AgentMessageRequest, MessageType } from "@actus/types";
 
 const ACTIVE_STATUSES = ["DRAFT", "OPEN", "IN_PROGRESS"] as const;
@@ -69,9 +69,9 @@ export const processWhatsAppMessage = inngest.createFunction(
 
     // Media download + agent run happen in one step so the base64 payload never crosses
     // Inngest's serialized step state, and a resend retry below won't re-run this.
-    const reply = await step.run("process-agent-message", async () => {
+    const agent = await step.run("process-agent-message", async () => {
       const built = await buildAgentInput({ messageType, textBody, mediaId, mediaMimeType });
-      if ("reject" in built) return built.reject;
+      if ("reject" in built) return { reply: built.reject, imageUrl: null };
 
       const activeEvent = await prisma.event.findFirst({
         where: {
@@ -88,11 +88,19 @@ export const processWhatsAppMessage = inngest.createFunction(
         // sourceMessageId (the wamid) makes event creation idempotent across step retries.
         { userId: user.id, tenantId: user.tenantId, sourceMessageId: webhookEventId }
       );
-      return result.response;
+      return { reply: result.response, imageUrl: result.imageUrl ?? null };
     });
 
     // Separate step: a failed send is retried without re-running the agent.
-    await step.run("reply", () => sendWhatsAppMessage(waId, reply));
+    await step.run("reply", () => sendWhatsAppMessage(waId, agent.reply));
+
+    // A matching KB case may carry a reference image — send it after the text (F6).
+    // Its own step so a failed image send doesn't re-run the agent or the text reply.
+    if (agent.imageUrl) {
+      await step.run("reply-image", () =>
+        sendWhatsAppImage(waId, agent.imageUrl!, "Imagen de referencia de un caso similar.")
+      );
+    }
 
     return { status: "processed" as const };
   }
