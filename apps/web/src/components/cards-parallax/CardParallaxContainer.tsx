@@ -3,7 +3,7 @@ import { projects } from '@/data/mockData';
 import styles from './stylecardcontainer.module.scss'
 import { CardParallax } from './CardParallax';
 import { useRef } from 'react';
-import { useScroll } from 'framer-motion';
+import { useScroll } from 'motion/react';
 
 export default function CardParallaxContainer() {
     const container = useRef<HTMLDivElement>(null);
