@@ -213,7 +213,7 @@ const KB_IMAGE_THRESHOLD = 0.75;
 
 // Public base URL where /api/media is reachable from the internet (WhatsApp fetches it).
 // Must be the deployed URL, not localhost. Override with APP_PUBLIC_URL if the domain changes.
-const PUBLIC_BASE_URL = process.env.APP_PUBLIC_URL ?? "https://actus-project-web.vercel.app";
+const PUBLIC_BASE_URL = process.env.APP_PUBLIC_URL ?? "https://actusagent.io";
 
 function kbImageUrl(kbId: number): string {
   return `${PUBLIC_BASE_URL.replace(/\/$/, "")}/api/media/kb/${kbId}`;
