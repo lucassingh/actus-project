@@ -5,6 +5,7 @@ import { Hero } from "@/components/landing/Hero";
 import { ProductDefinition } from "@/components/landing/ProductDefinition";
 import { ProblemSection } from "@/components/landing/ProblemSection";
 import { SolutionSection } from "@/components/landing/SolutionSection";
+import { CapabilitiesSection } from "@/components/landing/CapabilitiesSection";
 import { Faqsection } from "@/components/landing/Faqsection";
 import { ContactSection } from "@/components/landing/ContactSection";
 import { Footer } from "@/components/landing/Footer";
@@ -21,6 +22,7 @@ export default async function RootPage() {
       <ProductDefinition />
       <ProblemSection />
       <SolutionSection />
+      <CapabilitiesSection />
       <Faqsection />
       <ContactSection />
       <Footer />

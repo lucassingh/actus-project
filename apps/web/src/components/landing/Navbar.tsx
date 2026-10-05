@@ -9,6 +9,7 @@ const items: CardNavItem[] = [
     links: [
       { label: "El desafío", href: "#desafio", ariaLabel: "Ir a El desafío" },
       { label: "La solución", href: "#solucion", ariaLabel: "Ir a La solución" },
+      { label: "Capacidades", href: "#capacidades", ariaLabel: "Ir a Capacidades" },
     ],
   },
   {
