@@ -84,7 +84,7 @@ export function renderWeeklySummaryEmail(s: WeeklySummary): { subject: string; h
       </table>
 
       <div style="margin-top:24px;">
-        <a href="https://actus-project-web.vercel.app/dashboard/kpis" style="display:inline-block;background:${NAVY};color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:8px;">Ver el detalle en Actus</a>
+        <a href="https://actusagent.io/dashboard/kpis" style="display:inline-block;background:${NAVY};color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:8px;">Ver el detalle en Actus</a>
       </div>
     </td></tr>
     <tr><td style="padding:16px 24px;color:${MUTED};font-size:11px;text-align:center;">Enviado automáticamente por Actus · resumen de los últimos 7 días</td></tr>
