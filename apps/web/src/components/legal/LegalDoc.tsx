@@ -38,8 +38,8 @@ export function LegalDoc({
 
         <p className="mt-12 border-t border-[#E6E7EE] pt-6 text-sm text-[#6B7084]">
           ¿Dudas sobre esta página? Escribinos a{" "}
-          <a href="mailto:hola@actus.ai" className="text-[#C94B0B] underline">
-            hola@actus.ai
+          <a href="mailto:soporte@actusagent.io" className="text-[#C94B0B] underline">
+            soporte@actusagent.io
           </a>
           .
         </p>

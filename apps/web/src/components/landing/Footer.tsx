@@ -22,7 +22,7 @@ const columns: { title: string; links: FooterLink[] }[] = [
   {
     title: "Contacto",
     links: [
-      { label: "hola@actus.ai", href: "mailto:hola@actus.ai" },
+      { label: "soporte@actusagent.io", href: "mailto:soporte@actusagent.io" },
       { label: "Argentina" },
     ],
   },
