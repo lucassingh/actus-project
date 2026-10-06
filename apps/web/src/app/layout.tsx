@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat, Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { esUY } from "@clerk/localizations";
+import { SITE_URL } from "@/lib/site-url";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -17,7 +18,6 @@ const inter = Inter({
   display: "swap",
 });
 
-const SITE_URL = "https://actusagent.io";
 const TITLE = "Actus IA | El Conocimiento Industrial Permanente";
 const DESCRIPTION =
   "El asistente de mantenimiento industrial por WhatsApp: captura, organiza y aplica el conocimiento de tu planta.";

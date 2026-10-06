@@ -7,6 +7,11 @@ const isPublicRoute = createRouteMatcher([
   "/terminos",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  // Crawlers and link previews have no session: these redirected to /sign-in, so Google got no
+  // sitemap and shared links had no image.
+  "/robots.txt",
+  "/sitemap.xml",
+  "/opengraph-image(.*)",
   "/api/webhooks(.*)",
   "/api/v1/whatsapp/webhook(.*)", // authenticated via HMAC signature, not a Clerk session
   "/api/inngest(.*)", // Inngest serve endpoint — authenticated via Inngest signing key
