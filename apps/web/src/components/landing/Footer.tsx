@@ -80,16 +80,28 @@ export function Footer() {
       </div>
 
       {/* Full-bleed block (outside the max-w container): giant wordmark + copyright, both the
-          same width with 30px side padding. tracking-normal so the heavy letters never overlap. */}
+          same width with 30px side padding. The wordmark is SVG text whose viewBox is the ink box
+          of "ACTUS" in Montserrat Black at 100 units (measured in the browser), so it always spans
+          exactly the available width: a vw font-size overflowed and got cut on phones.
+          textLength pins the advance so the fallback font fits too while Montserrat loads. */}
       <div className="px-[30px] pt-16">
-        <div className="overflow-hidden">
-          <span
-            aria-hidden="true"
-            className="block w-full select-none whitespace-nowrap text-center font-heading text-[clamp(3.5rem,26vw,24rem)] font-black uppercase leading-[0.82] tracking-normal text-white/[0.06]"
+        <svg
+          viewBox="-4 -73 366 76"
+          aria-hidden="true"
+          focusable="false"
+          className="mx-auto block h-auto w-full max-w-350 select-none"
+        >
+          <text
+            x="0"
+            y="0"
+            fontSize="100"
+            textLength="360.8"
+            lengthAdjust="spacingAndGlyphs"
+            className="fill-white/6 font-heading font-black"
           >
-            Actus
-          </span>
-        </div>
+            ACTUS
+          </text>
+        </svg>
         <div className="mt-[30px] flex flex-col items-start justify-between gap-4 border-t border-ink-800 pb-[30px] pt-6 text-sm text-ink-500 sm:flex-row sm:items-center">
           <p>© {year} Actus. Todos los derechos reservados.</p>
           <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">

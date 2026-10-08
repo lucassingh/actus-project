@@ -199,7 +199,7 @@ const CardNav: React.FC<CardNavProps> = ({
             href="#home"
             className="logo-container flex items-center md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 order-1 md:order-none"
           >
-            <Image src={logo} alt={logoAlt} width={120} height={28} className="logo h-[28px] w-auto" priority />
+            <Image src={logo} alt={logoAlt} width={86} height={28} className="logo h-[28px] w-auto" priority />
           </a>
 
           <a
