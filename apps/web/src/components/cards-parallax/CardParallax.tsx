@@ -1,10 +1,20 @@
 'use client'
-import Image from 'next/image';
+import Image, { type StaticImageData } from 'next/image';
 import styles from './styles.module.scss';
 import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'motion/react';
+import { motion, useTransform, type MotionValue } from 'motion/react';
 
-export const CardParallax = ({ title, description, src, url, color, i, progress, range, targetScale }: any) => {
+type CardParallaxProps = {
+    src: StaticImageData;
+    alt: string;
+    color: string;
+    i: number;
+    progress: MotionValue<number>;
+    range: [number, number];
+    targetScale: number;
+};
+
+export const CardParallax = ({ src, alt, color, i, progress, range, targetScale }: CardParallaxProps) => {
 
     const container = useRef<HTMLDivElement>(null);
 
@@ -25,7 +35,7 @@ export const CardParallax = ({ title, description, src, url, color, i, progress,
                         <div className={styles.inner}>
                             <Image
                                 src={src}
-                                alt="image"
+                                alt={alt}
                                 className='rounded-[10px]'
                                 style={{ width: '100%', height: 'auto', display: 'block' }}
                             />

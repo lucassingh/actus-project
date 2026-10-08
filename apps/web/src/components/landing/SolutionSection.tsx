@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import CardParallaxContainer from "../cards-parallax/CardParallaxContainer";
+import { DashboardCarousel } from "./DashboardCarousel";
 import { OperatorsSubsection } from "./OperatorsSubsection";
 
 export function SolutionSection() {
@@ -12,7 +13,7 @@ export function SolutionSection() {
       {/* Light wrapper (no overflow/transform) so CardParallax's sticky stacking keeps working. */}
       <div className="bg-canvas">
         {/* Intro — clean light hero, flows from the dark Problem above (no floating dark box). */}
-        <section id="solucion" className="relative overflow-hidden pt-28 md:pt-36">
+        <section id="solucion" className="relative overflow-hidden pt-20 md:pt-36">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 -top-10 mx-auto h-56 w-[70%] max-w-4xl rounded-full bg-accent/10 blur-3xl"
@@ -55,7 +56,7 @@ export function SolutionSection() {
           </div>
 
           {/* Dashboard showcase intro */}
-          <div className="relative mx-auto mt-24 max-w-6xl px-5 md:mt-32 md:px-8">
+          <div className="relative mx-auto mt-16 max-w-6xl px-5 md:mt-32 md:px-8">
             <motion.div
               initial={reduce ? false : { opacity: 0, y: 16 }}
               whileInView={reduce ? {} : { opacity: 1, y: 0 }}
@@ -77,8 +78,14 @@ export function SolutionSection() {
           </div>
         </section>
 
-        {/* Supervisor dashboard stack (sticky scroll — must not sit inside an overflow-hidden/transformed box) */}
-        <CardParallaxContainer />
+        {/* Supervisor dashboard stack (sticky scroll — must not sit inside an overflow-hidden/transformed box).
+            Desktop/tablet only: on a phone the 100vh sticky cards leave screen-tall gaps, so it's a carousel. */}
+        <div className="hidden md:block">
+          <CardParallaxContainer />
+        </div>
+        <div className="md:hidden">
+          <DashboardCarousel />
+        </div>
       </div>
 
       {/* Operator content (dark) — self-contained how-it-works bento */}
