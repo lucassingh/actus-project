@@ -54,6 +54,9 @@
     --color-ink-800: #181F3B;
     --color-ink-700: #232B4D;
     --color-ink-600: #3A4468;
+    /* Quiet meta text (footer, form notes). Was missing, so text-ink-500 inherited a near-black
+       (~1.4:1). #7780A3 keeps >=4.5:1 on ink-950 and ink-900. */
+    --color-ink-500: #7780A3;
     --color-ink-400: #8A93B5;
     --color-ink-300: #B4BAD2;
     --color-ink-100: #E6E8F2;
