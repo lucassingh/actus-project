@@ -80,7 +80,9 @@ export function DependencyVisual() {
   return (
     <Stage>
       <svg viewBox="0 0 200 160" className="h-40 w-[220px]" fill="none">
-        <motion.g animate={flicker}>
+        {/* Constant `initial`s: without them the first render comes from `animate`, which depends
+            on useReducedMotion (null on the server) — a hydration mismatch under reduced motion. */}
+        <motion.g initial={{ opacity: 1 }} animate={flicker}>
           {sats.map((s, i) => (
             <line key={i} x1={center.x} y1={center.y} x2={s.x} y2={s.y} className="stroke-accent/50" strokeWidth="1.5" />
           ))}
@@ -93,11 +95,12 @@ export function DependencyVisual() {
           cy={center.y}
           r="13"
           className="fill-accent"
+          initial={{ scale: 1 }}
           animate={reduce ? {} : { scale: [1, 1.12, 1] }}
           style={{ transformOrigin: `${center.x}px ${center.y}px` }}
           transition={reduce ? {} : { duration: 2, repeat: Infinity, ease: "easeInOut" }}
         />
-        <motion.circle cx={center.x} cy={center.y} r="13" className="fill-accent/30" animate={flicker} />
+        <motion.circle cx={center.x} cy={center.y} r="13" className="fill-accent/30" initial={{ opacity: 1 }} animate={flicker} />
       </svg>
     </Stage>
   );
@@ -121,7 +124,9 @@ export function StandardizationVisual() {
             className={p.cls}
             strokeWidth="2"
             strokeLinecap="round"
-            initial={{ pathLength: reduce ? 1 : 0, opacity: reduce ? 0.9 : 0 }}
+            // Same initial on server and client (useReducedMotion is null on the server): reduced
+            // motion just jumps to the end with duration 0.
+            initial={{ pathLength: 0, opacity: 0 }}
             animate={{ pathLength: 1, opacity: 1 }}
             transition={reduce ? { duration: 0 } : { duration: 1.4, delay: i * 0.5, repeat: Infinity, repeatDelay: 1.2, repeatType: "reverse" }}
           />
@@ -159,16 +164,18 @@ export function VisibilityVisual() {
             <rect key={i} x={b.x} y={base - maxH} width="14" height={maxH} rx="3" className="fill-none stroke-ink-600" strokeWidth="1.3" strokeDasharray="3 4" />
           );
         })}
-        {!reduce && (
-          <motion.line
-            y1={base - maxH - 6}
-            y2={base + 4}
-            className="stroke-accent/60"
-            strokeWidth="1.5"
-            animate={{ x1: [30, 196, 30], x2: [30, 196, 30] }}
-            transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-          />
-        )}
+        {/* Scanner line. Hidden with CSS under reduced motion, not with a JS branch: the server
+            can't know the preference, and rendering it on one side only is a hydration mismatch. */}
+        <motion.line
+          y1={base - maxH - 6}
+          y2={base + 4}
+          className="stroke-accent/60 motion-reduce:hidden"
+          strokeWidth="1.5"
+          // Without a starting value Motion writes x1/x2="undefined" on the first frame (console error).
+          initial={{ x1: 30, x2: 30 }}
+          animate={reduce ? undefined : { x1: [30, 196, 30], x2: [30, 196, 30] }}
+          transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+        />
       </svg>
     </Stage>
   );
