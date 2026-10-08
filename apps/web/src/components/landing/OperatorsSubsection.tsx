@@ -106,16 +106,16 @@ function StepCard({
       whileInView={reduce ? {} : { opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className={`group relative flex min-h-[180px] flex-col overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-900/50 p-6 transition-colors duration-300 hover:border-ink-600 ${className}`}
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-900/50 p-6 md:min-h-45 transition-colors duration-300 hover:border-ink-600 ${className}`}
     >
       <span
         aria-hidden="true"
-        className="select-none font-serif text-5xl font-bold leading-none text-white/10"
+        className="select-none font-serif text-4xl font-bold leading-none text-white/10 md:text-5xl"
       >
         {step.n}
       </span>
 
-      <div className="mt-auto pt-6">
+      <div className="mt-auto pt-4 md:pt-6">
         {step.modes ? (
           <div className="mb-4 flex gap-2">
             {step.modes.map((Icon, i) => (
@@ -169,23 +169,18 @@ export function OperatorsSubsection() {
           </a>
         </div>
 
-        {/* Bento — flex, with the fixed-height chat as the master height. The side columns
-            stretch to match it (items-stretch) and their cards flex to fill, so nothing is
-            driven by the chat's changing content: the whole block never changes height. */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
-          {/* Left column */}
-          <div className="flex flex-1 flex-col gap-4">
-            <StepCard step={steps[0]} delay={0} reduce={reduce} className="md:flex-1" />
-            <StepCard step={steps[2]} delay={0.16} reduce={reduce} className="md:flex-1" />
-          </div>
-
-          {/* Center — live WhatsApp chat, fixed height, no phone frame */}
+        {/* Bento — DOM in reading order (chat, 01, 02, 03, 04): on a phone it stacks like that;
+            from md, a grid puts 01/03 left, the chat in the middle spanning both rows, 02/04
+            right. The chat's feed is absolutely filled, so its changing content never drives
+            the height: the step cards size the rows and the block never jumps. */}
+        <div className="grid gap-4 md:grid-cols-[1fr_360px_1fr] md:grid-rows-2">
+          {/* Live WhatsApp chat, fixed height on mobile, no phone frame */}
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 20, scale: 0.98 }}
             whileInView={reduce ? {} : { opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.55, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-            className="flex h-[480px] w-full flex-col overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-900/70 shadow-[0_30px_70px_-30px_rgba(0,0,0,0.8)] md:h-auto md:w-[360px] md:shrink-0"
+            className="flex h-110 w-full flex-col overflow-hidden rounded-2xl border border-ink-700/60 bg-ink-900/70 shadow-[0_30px_70px_-30px_rgba(0,0,0,0.8)] md:col-start-2 md:row-span-2 md:row-start-1 md:h-auto"
           >
             {/* chat header */}
             <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3">
@@ -247,11 +242,10 @@ export function OperatorsSubsection() {
             </div>
           </motion.div>
 
-          {/* Right column */}
-          <div className="flex flex-1 flex-col gap-4">
-            <StepCard step={steps[1]} delay={0.08} reduce={reduce} className="md:flex-1" />
-            <StepCard step={steps[3]} delay={0.24} reduce={reduce} className="md:flex-1" />
-          </div>
+          <StepCard step={steps[0]} delay={0} reduce={reduce} className="md:col-start-1 md:row-start-1" />
+          <StepCard step={steps[1]} delay={0.08} reduce={reduce} className="md:col-start-3 md:row-start-1" />
+          <StepCard step={steps[2]} delay={0.16} reduce={reduce} className="md:col-start-1 md:row-start-2" />
+          <StepCard step={steps[3]} delay={0.24} reduce={reduce} className="md:col-start-3 md:row-start-2" />
         </div>
       </div>
     </section>

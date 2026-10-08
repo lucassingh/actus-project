@@ -9,6 +9,7 @@ import { CapabilitiesSection } from "@/components/landing/CapabilitiesSection";
 import { Faqsection } from "@/components/landing/Faqsection";
 import { ContactSection } from "@/components/landing/ContactSection";
 import { Footer } from "@/components/landing/Footer";
+import { SiteLoaderProvider } from "@/components/landing/SiteLoader";
 import { BackToTop } from "@/components/ui/BackToTop";
 
 export default async function RootPage() {
@@ -16,17 +17,19 @@ export default async function RootPage() {
   if (userId) redirect("/dashboard");
 
   return (
-    <div className="relative">
-      <Navbar />
-      <Hero />
-      <ProductDefinition />
-      <ProblemSection />
-      <SolutionSection />
-      <CapabilitiesSection />
-      <Faqsection />
-      <ContactSection />
-      <Footer />
-      <BackToTop />
-    </div>
+    <SiteLoaderProvider>
+      <div className="relative">
+        <Navbar />
+        <Hero />
+        <ProductDefinition />
+        <ProblemSection />
+        <SolutionSection />
+        <CapabilitiesSection />
+        <Faqsection />
+        <ContactSection />
+        <Footer />
+        <BackToTop />
+      </div>
+    </SiteLoaderProvider>
   );
 }

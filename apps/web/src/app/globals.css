@@ -54,6 +54,9 @@
     --color-ink-800: #181F3B;
     --color-ink-700: #232B4D;
     --color-ink-600: #3A4468;
+    /* Quiet meta text (footer, form notes). Was missing, so text-ink-500 inherited a near-black
+       (~1.4:1). #7780A3 keeps >=4.5:1 on ink-950 and ink-900. */
+    --color-ink-500: #7780A3;
     --color-ink-400: #8A93B5;
     --color-ink-300: #B4BAD2;
     --color-ink-100: #E6E8F2;
@@ -82,6 +85,61 @@
     .hero-reveal {
         animation: hero-reveal 700ms var(--ease-out-expo) both;
     }
+}
+
+/* Landing loader intro (SiteLoader.tsx). Pure CSS so it runs from the first paint, before
+   hydration; the loader waits for these animations to finish (~1.45s). The paths use pathLength="1", so a
+   dash of 1 offset by 1 is "not drawn yet". The A's fill/stroke colors come from Motion (the dive
+   darkens them); here only its opacity and dash animate. */
+@property --site-loader-pct {
+    syntax: "<integer>";
+    inherits: false;
+    initial-value: 0;
+}
+
+.site-loader-a,
+.site-loader-swoosh {
+    stroke-width: 3;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    fill-opacity: 0;
+}
+.site-loader-a {
+    animation:
+        site-loader-draw 900ms cubic-bezier(0.65, 0, 0.35, 1) forwards,
+        site-loader-fill 300ms ease-out 850ms forwards;
+}
+.site-loader-swoosh {
+    fill: #EA580E;
+    stroke: #EA580E;
+    transform-box: fill-box;
+    transform-origin: 20% 30%;
+    animation:
+        site-loader-draw 650ms cubic-bezier(0.65, 0, 0.35, 1) 350ms forwards,
+        site-loader-fill 300ms ease-out 950ms forwards,
+        site-loader-settle 500ms var(--ease-out-expo) 950ms both;
+}
+.site-loader-pct {
+    counter-reset: site-loader-pct var(--site-loader-pct);
+    animation: site-loader-count 1250ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.site-loader-pct::after {
+    content: counter(site-loader-pct) "%";
+}
+/* Without JS the overlay would never leave: hide it after a while no matter what. */
+.site-loader {
+    animation: site-loader-failsafe 400ms ease-out 7s forwards;
+}
+
+@keyframes site-loader-draw { to { stroke-dashoffset: 0; } }
+@keyframes site-loader-fill { to { fill-opacity: 1; } }
+@keyframes site-loader-settle { from { transform: rotate(-10deg) scale(0.92); } }
+@keyframes site-loader-count { to { --site-loader-pct: 100; } }
+@keyframes site-loader-failsafe { to { opacity: 0; visibility: hidden; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .site-loader { display: none; }
 }
 
 /* Sidebar support button: slow drifting navy-to-orange gradient with fine grain (echoes the login).
@@ -151,13 +209,14 @@
 :root {
     --radius: 0.625rem;
 
-    /* Z-index scale: content < sticky < nav < overlay < modal < toast */
+    /* Z-index scale: content < sticky < nav < overlay < modal < toast < loader */
     --z-content: 1;
     --z-sticky: 20;
     --z-nav: 40;
     --z-overlay: 60;
     --z-modal: 80;
     --z-toast: 100;
+    --z-loader: 120;
 
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
