@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { ArrowRight } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
+import { useSiteReady } from "./SiteLoader";
 
 const DotGrid = dynamic(() => import("@/components/reactbits/DotGrid"), { ssr: false });
 
@@ -55,20 +56,36 @@ const item: Variants = {
   hidden: { opacity: 0, y: "0.45em", filter: "blur(6px)" },
   show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
 };
+// Reduced motion swaps the timing, not the structure: the first render has to match the
+// server's, where useReducedMotion is still null (dropping the variants was a hydration error).
+const containerInstant: Variants = { hidden: {}, show: {} };
+const itemInstant: Variants = {
+  hidden: item.hidden,
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0 } },
+};
 
 export function Hero() {
   const reduce = useReducedMotion();
+  // Entrance waits for the loader to clear (it would otherwise play hidden underneath it).
+  const ready = useSiteReady();
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
 
+  // The phone mounts on reveal: fetch its chunk now so it's there by then.
   useEffect(() => {
-    if (reduce || paused) return;
+    void import("@/components/animated-assets/HeroAnimatedAsset");
+  }, []);
+
+  useEffect(() => {
+    if (reduce || paused || !ready) return;
     const t = setTimeout(() => setActive((a) => (a + 1) % slides.length), SLIDE_MS);
     return () => clearTimeout(t);
-  }, [active, paused, reduce]);
+  }, [active, paused, reduce, ready]);
 
   const slide = slides[active];
   const accentSet = new Set(slide.accent);
+  const containerV = reduce ? containerInstant : container;
+  const itemV = reduce ? itemInstant : item;
 
   return (
     <section
@@ -97,13 +114,13 @@ export function Hero() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={active}
-                variants={reduce ? undefined : container}
-                initial={reduce ? false : "hidden"}
-                animate={reduce ? {} : "show"}
+                variants={containerV}
+                initial="hidden"
+                animate={ready ? "show" : "hidden"}
                 exit={reduce ? undefined : { opacity: 0, filter: "blur(8px)", transition: { duration: 0.28 } }}
               >
                 <motion.p
-                  variants={reduce ? undefined : item}
+                  variants={itemV}
                   className="mb-4 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-accent"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
@@ -117,7 +134,7 @@ export function Hero() {
                     ) : (
                       <motion.span
                         key={i}
-                        variants={reduce ? undefined : item}
+                        variants={itemV}
                         className={`inline-block${accentSet.has(norm(w)) ? " text-accent" : ""}`}
                       >
                         {w}
@@ -127,7 +144,7 @@ export function Hero() {
                 </h1>
 
                 <motion.p
-                  variants={reduce ? undefined : item}
+                  variants={itemV}
                   className="mt-6 max-w-[34rem] text-lg leading-relaxed text-ink-300 md:text-xl"
                 >
                   {slide.subtitle}
@@ -185,8 +202,8 @@ export function Hero() {
                   key={active}
                   className="absolute inset-x-0 top-0 block w-full origin-top bg-accent"
                   style={{ height: "100%" }}
-                  initial={{ scaleY: reduce ? 1 : 0 }}
-                  animate={{ scaleY: 1 }}
+                  initial={{ scaleY: 0 }}
+                  animate={{ scaleY: ready ? 1 : 0 }}
                   transition={{ duration: reduce ? 0 : SLIDE_MS / 1000, ease: "linear" }}
                 />
               )}
@@ -195,10 +212,16 @@ export function Hero() {
           ))}
         </div>
 
-        {/* RIGHT — fixed phone */}
-        <div className="flex justify-center lg:justify-end [zoom:0.62] sm:[zoom:0.72] lg:[zoom:0.82] 2xl:[zoom:1]">
-          <HeroAnimatedAsset />
-        </div>
+        {/* RIGHT — fixed phone. Mounted on reveal so its chat starts from the first message;
+            the placeholder keeps the same box meanwhile, so nothing shifts. */}
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          animate={ready ? { opacity: 1, y: 0 } : undefined}
+          transition={reduce ? { duration: 0 } : { duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+          className="flex justify-center lg:justify-end [zoom:0.62] sm:[zoom:0.72] lg:[zoom:0.82] 2xl:[zoom:1]"
+        >
+          {ready ? <HeroAnimatedAsset /> : <div className="h-[690px] aspect-[462/944]" />}
+        </motion.div>
       </div>
     </section>
   );
