@@ -22,14 +22,14 @@ export default async function DashboardPage() {
     }),
     currentUser(),
   ]);
-  if (!user) redirect("/sign-in");
+  if (!user) redirect("/sin-acceso");
 
   const firstName = clerkUser?.firstName || user.name || nameFromEmail(user.email);
   const greeting = firstName ? `Hola, ${firstName}` : "Hola";
 
   if (user.role === "ADMIN") return <AdminHome greeting={greeting} />;
   if (user.role === "SUPERVISOR" && user.tenantId) return <SupervisorHome greeting={greeting} tenantId={user.tenantId} />;
-  redirect("/sign-in");
+  redirect("/sin-acceso");
 }
 
 // "lucas.singh10@gmail.com" -> "Lucas": a readable fallback when Clerk has no first name.
