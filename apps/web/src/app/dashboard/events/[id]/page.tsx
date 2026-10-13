@@ -22,7 +22,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     where: { clerkUserId },
     select: { tenantId: true, role: true },
   });
-  if (!user || !user.tenantId) redirect("/sign-in");
+  if (!user || !user.tenantId) redirect("/dashboard");
 
   const event = await prisma.event.findFirst({
     where: { id: eventId, tenantId: user.tenantId },

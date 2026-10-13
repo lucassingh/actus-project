@@ -26,7 +26,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     where: { clerkUserId },
     select: { id: true, role: true, tenantId: true },
   });
-  if (!user || !user.tenantId) redirect("/sign-in");
+  if (!user || !user.tenantId) redirect("/dashboard");
 
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1", 10));

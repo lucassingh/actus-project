@@ -17,7 +17,7 @@ export default async function KnowledgeBasePage({
     where: { clerkUserId },
     select: { role: true, tenantId: true },
   });
-  if (!user || !user.tenantId) redirect("/sign-in");
+  if (!user || !user.tenantId) redirect("/dashboard");
 
   const { deleted } = await searchParams;
   const canCurate = user.role === "SUPERVISOR";
