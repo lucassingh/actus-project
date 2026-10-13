@@ -28,23 +28,51 @@ export async function upsertTenant(orgId: string): Promise<number> {
 }
 
 /**
+ * The session only carries the *active* organization. A supervisor who accepted the invitation
+ * on another device, or whose session never set an org as active, has none: look the membership
+ * up through the Backend API instead of treating them as uninvited.
+ */
+async function firstOrgMembership(clerkUserId: string): Promise<{ orgId: string; orgRole: string } | null> {
+  try {
+    const client = await clerkClient();
+    const { data } = await client.users.getOrganizationMembershipList({ userId: clerkUserId, limit: 1 });
+    const membership = data[0];
+    return membership ? { orgId: membership.organization.id, orgRole: membership.role } : null;
+  } catch {
+    // Clerk unreachable: the user lands on /sin-acceso and can retry, instead of a 500.
+    return null;
+  }
+}
+
+/**
  * Resolves the current Clerk session to a DB User row, creating (or fixing) it
  * lazily on first request. Called by the dashboard layout on every page load.
+ * Whether that row grants a workspace is a separate question: see hasDashboardAccess().
  */
 export async function ensureDbUser(): Promise<DbUser> {
-  const { userId: clerkUserId, orgId, orgRole, sessionClaims } = await auth();
+  const { userId: clerkUserId, orgId: activeOrgId, orgRole: activeOrgRole, sessionClaims } = await auth();
   if (!clerkUserId) {
     throw new AuthError("Unauthenticated");
   }
 
   const isActusAdmin =
     (sessionClaims?.publicMetadata as Record<string, unknown> | undefined)?.actusAdmin === true;
-  const expectedRole: Role = isActusAdmin ? "ADMIN" : orgRole === "org:member" ? "OPERATOR" : "SUPERVISOR";
 
   let user = await prisma.user.findUnique({
     where: { clerkUserId },
     select: { id: true, role: true, name: true, isActive: true, tenantId: true },
   });
+
+  // Only look memberships up when we would otherwise leave the user without a company.
+  const org = activeOrgId
+    ? { orgId: activeOrgId, orgRole: activeOrgRole }
+    : !user || !user.tenantId
+      ? await firstOrgMembership(clerkUserId)
+      : null;
+  const orgId = org?.orgId;
+  const orgRole = org?.orgRole;
+
+  const expectedRole: Role = isActusAdmin ? "ADMIN" : orgRole === "org:member" ? "OPERATOR" : "SUPERVISOR";
 
   if (!user) {
     const clerkUser = await currentUser();

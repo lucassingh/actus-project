@@ -61,6 +61,9 @@ túnel tipo ngrok apuntando a `localhost`) — Meta no puede pegarle a `localhos
    - `Tenant` con `name: "Essen"` y `clerkOrgId: org_xxx`
    - `User` con `role: "SUPERVISOR"` y `tenantId` vinculado al tenant
 4. El sidebar debería mostrar: **Dashboard**, **Operadores**, **Eventos**, **Documentos**, **Base de Conocimiento**
+5. Si la cuenta **no** pertenece a ninguna organización de Clerk (nadie la invitó), no entra al panel:
+   va a `/sin-acceso`, que explica la situación y permite cerrar sesión o escribir a soporte.
+   (Antes esto producía un loop infinito `/dashboard → /sign-in → / → /dashboard`.)
 
 ### 2.3 Registrar un operador
 

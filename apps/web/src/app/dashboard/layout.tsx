@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ensureDbUser, AuthError } from "@/lib/clerk";
+import { hasDashboardAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { getOrgLogos } from "@/lib/org-logos";
 
@@ -14,7 +15,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     throw err;
   }
 
-  if (!user.isActive) redirect("/sign-in");
+  // A signed-in account with no workspace (never invited to a company, or deactivated) must not
+  // go to /sign-in: Clerk bounces an active session back to the landing, and the landing sends
+  // every signed-in user here again, an endless loop. /sin-acceso explains it and lets them sign out.
+  if (!hasDashboardAccess(user)) redirect("/sin-acceso");
 
   const isAdmin = user.role === "ADMIN";
   const [clerkUser, tenant] = await Promise.all([
