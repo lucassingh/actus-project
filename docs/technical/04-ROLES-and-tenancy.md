@@ -24,18 +24,55 @@ Each industrial company (tenant) maps to a Clerk Organization:
 
 ## Middleware (Next.js)
 
-`apps/web/src/middleware.ts` runs on every `/api/v1/*` and `/dashboard/*` route, **except**
-`/api/v1/whatsapp/webhook` (explicitly excluded — Meta never sends a Clerk session; that
-route authenticates its caller via HMAC signature instead, see
-[`08-WHATSAPP-integration.md`](08-WHATSAPP-integration.md)):
+`apps/web/src/middleware.ts` (`clerkMiddleware`) runs on every route that is not in
+`isPublicRoute` (landing, legal pages, sign-in/up, robots/sitemap/OG image, the WhatsApp
+webhook — authenticated via HMAC signature instead, see
+[`08-WHATSAPP-integration.md`](08-WHATSAPP-integration.md) —, the Inngest endpoint and the
+public KB media). It only checks that a Clerk session exists: no session → `401` for
+`/api/v1/*`, redirect to `/sign-in` for pages. It never touches the database.
+
+The DB lookup happens in `apps/web/src/app/dashboard/layout.tsx`, on every dashboard render:
 
 ```
-1. Verify Clerk session token
-2. Extract clerkUserId + orgId from token
-3. Look up User in DB by clerkUserId → get tenantId + role
-4. Attach to request context: { userId, tenantId, role }
-5. All DB queries downstream include tenantId automatically
+1. ensureDbUser() (lib/clerk.ts): Clerk session → User row, created or re-synced lazily
+   - role: ADMIN if publicMetadata.actusAdmin === true, OPERATOR if the org role is
+     org:member, SUPERVISOR otherwise
+   - tenant: the session's active organization; if the session has none, the user's first
+     organization membership via the Backend API (invited supervisor on a new device)
+2. hasDashboardAccess(user) (lib/access.ts) decides whether there is a workspace to show
+3. Each page re-reads the User row and scopes every query by its tenantId
 ```
+
+## Who gets into the dashboard
+
+| Signed-in account | Lands on |
+|---|---|
+| `actusAdmin` flag in public metadata | `/dashboard` (platform admin, all tenants) |
+| Supervisor linked to a tenant | `/dashboard` (their company) |
+| Supervisor with no tenant (nobody invited this email) | `/sin-acceso` |
+| Operator (`org:member`) or `isActive = false` | `/sin-acceso` |
+
+`/sin-acceso` (`app/sin-acceso/page.tsx`) is a **terminal** page: it says the account is not
+linked to any company and offers sign-out, a support mailto and a retry link. It re-runs
+`ensureDbUser()`, so a reload after accepting an invitation goes straight to the dashboard.
+
+**Rule: never `redirect("/sign-in")` for a signed-in user.** Clerk's `<SignIn />` does not
+render a form when a session is active — it redirects to the home page, and the home page
+sends every signed-in user to `/dashboard`. Before this rule (2026-10-13, PR #29) an uninvited
+Google sign-in looped forever between `/dashboard`, `/sign-in` and the landing. A redirect to
+`/sign-in` is only valid when `auth()` returns no `userId`; a signed-in user without the right
+role or tenant goes to `/dashboard` (page level) or `/sin-acceso` (layout level).
+
+## Clerk Dashboard settings (Production instance)
+
+- **Organizations → Membership: optional.** The platform admin has no organization;
+  "required" forces org creation and loops sign-in ↔ dashboard.
+- **Restrictions → Access mode: Invite-only** (API value `restricted`). Sign-ups are
+  disabled and only invited emails can create an account, so an uninvited account never
+  reaches `/sin-acceso` in the first place. Supervisors are invited through Clerk
+  Organization invitations (`/dashboard/supervisors/create`). After switching modes, invite a
+  test email and confirm the link in the email still lets it create the account. The invited
+  email must be the one the person signs in with (also when they pick Google).
 
 ## Tenant isolation guarantee
 

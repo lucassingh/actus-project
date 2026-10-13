@@ -5,7 +5,7 @@
 | 01 | [01-AGENT-architecture.md](01-AGENT-architecture.md) | Agent service flow, Claude API integration, RAG pipeline |
 | 02 | [02-DATA-model.md](02-DATA-model.md) | Prisma schema, entity relationships, pgvector usage |
 | 03 | [03-API-contracts.md](03-API-contracts.md) | REST API contracts (legacy — written for the removed mobile app; the live transport is the WhatsApp webhook, see 08) |
-| 04 | [04-ROLES-and-tenancy.md](04-ROLES-and-tenancy.md) | Clerk Organizations, roles, tenant isolation middleware |
+| 04 | [04-ROLES-and-tenancy.md](04-ROLES-and-tenancy.md) | Clerk Organizations, roles, who gets into the dashboard (`/sin-acceso`), tenant isolation |
 | 05 | [05-TESTING-circuit.md](05-TESTING-circuit.md) | End-to-end manual testing guide (admin → supervisor → operator → agent) |
 | 06 | [06-ENVIRONMENTS-and-workflow.md](06-ENVIRONMENTS-and-workflow.md) | Prod/develop/local environments, git flow, migrations, prod→develop data sync |
 | 07 | [07-IMPLEMENTATION-plan.md](07-IMPLEMENTATION-plan.md) | Point-in-time gap analysis / backlog snapshot (2026-06-29) |
