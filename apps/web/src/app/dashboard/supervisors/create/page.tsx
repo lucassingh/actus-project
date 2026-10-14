@@ -1,5 +1,6 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
 import { AlertCircle, Info } from "lucide-react";
 import Link from "next/link";
@@ -30,22 +31,40 @@ async function inviteSupervisor(formData: FormData) {
       role: "org:admin",
       inviterUserId: userId,
     });
-  } catch {
-    redirect("/dashboard/supervisors/create?error=invite-failed");
+  } catch (error) {
+    // Clerk explains why in errors[0].code — keep it instead of collapsing every failure into one message.
+    const code = clerkErrorCode(error);
+    console.error("[inviteSupervisor] Clerk rejected the invitation", { code, tenantId, error });
+    Sentry.captureException(error, { tags: { flow: "invite-supervisor", clerkCode: code ?? "unknown" } });
+    redirect(`/dashboard/supervisors/create?error=invite-failed${code ? `&code=${encodeURIComponent(code)}` : ""}`);
   }
 
   redirect("/dashboard/supervisors?invited=1");
 }
 
+function clerkErrorCode(error: unknown): string | undefined {
+  const errors = (error as { errors?: { code?: unknown }[] } | null)?.errors;
+  const code = Array.isArray(errors) ? errors[0]?.code : undefined;
+  return typeof code === "string" ? code : undefined;
+}
+
 const ERROR_MESSAGES: Record<string, string> = {
   "missing-fields": "El email y la empresa son requeridos.",
-  "invite-failed": "No se pudo enviar la invitación. El email puede ya estar registrado o invitado.",
+  "invite-failed": "No se pudo enviar la invitación.",
+};
+
+const CLERK_ERROR_MESSAGES: Record<string, string> = {
+  duplicate_record: "Ya hay una invitación pendiente para ese email en esta empresa.",
+  already_a_member_in_organization: "Ese email ya es miembro de esta empresa.",
+  organization_membership_quota_exceeded:
+    "La empresa llegó al máximo de miembros que permite Clerk (las invitaciones pendientes también cuentan).",
+  form_param_format_invalid: "El email no tiene un formato válido.",
 };
 
 export default async function CreateSupervisorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; code?: string }>;
 }) {
   const { userId, sessionClaims } = await auth();
   if (!userId) redirect("/sign-in");
@@ -60,7 +79,11 @@ export default async function CreateSupervisorPage({
     select: { id: true, name: true },
   });
 
-  const { error } = await searchParams;
+  const { error, code } = await searchParams;
+  const errorMessage = error
+    ? (code && CLERK_ERROR_MESSAGES[code]) ??
+      `${ERROR_MESSAGES[error] ?? "Error desconocido."}${code ? ` (código de Clerk: ${code})` : ""}`
+    : null;
 
   return (
     <Page>
@@ -78,9 +101,9 @@ export default async function CreateSupervisorPage({
         </Alert>
       )}
 
-      {error && (
+      {errorMessage && (
         <Alert tone="danger" icon={AlertCircle}>
-          {ERROR_MESSAGES[error] ?? "Error desconocido."}
+          {errorMessage}
         </Alert>
       )}
 
