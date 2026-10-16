@@ -8,11 +8,12 @@ export const metadata: Metadata = {
 
 export default function TerminosPage() {
   return (
-    <LegalDoc title="Términos y Condiciones" updated="4 de octubre de 2026">
+    <LegalDoc title="Términos y Condiciones" updated="16 de octubre de 2026">
       <p>
         Estos términos regulan el uso de Actus (“el servicio”), un asistente de mantenimiento
-        industrial por WhatsApp con un panel web para supervisores. Al usar el servicio, aceptás estos
-        términos.
+        industrial por WhatsApp con un panel web para supervisores. El servicio lo presta Lucas Miguel
+        Singh (CUIT 20-31223903-6), que opera bajo el nombre comercial más uno. Al usar el servicio,
+        aceptás estos términos.
       </p>
 
       <h2>1. El servicio</h2>
@@ -53,7 +54,7 @@ export default function TerminosPage() {
       <p>
         El contenido que cargás (manuales, documentos, incidentes) sigue siendo tuyo o de tu empresa;
         nos otorgás una licencia limitada para procesarlo con el fin de prestar el servicio. El
-        software, la marca y el diseño de Actus son de su titular y no se transfieren.
+        software, la marca y el diseño de Actus son de Lucas Miguel Singh y no se transfieren.
       </p>
 
       <h2>6. Disponibilidad y limitación de responsabilidad</h2>

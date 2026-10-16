@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function PrivacidadPage() {
   return (
-    <LegalDoc title="Política de Privacidad" updated="4 de octubre de 2026">
+    <LegalDoc title="Política de Privacidad" updated="16 de octubre de 2026">
       <p>
         Esta política explica qué datos personales trata Actus (“Actus”, “nosotros”), con qué fines y
         cómo los protegemos. Actus es un asistente de mantenimiento industrial: los operarios de una
@@ -18,7 +18,8 @@ export default function PrivacidadPage() {
 
       <h2>1. Responsable del tratamiento</h2>
       <p>
-        El responsable de los datos es Actus. Si representás a una empresa cliente, esa empresa es
+        El responsable de los datos es Lucas Miguel Singh (CUIT 20-31223903-6), que opera Actus bajo
+        el nombre comercial más uno. Si representás a una empresa cliente, esa empresa es
         responsable de los datos de sus operarios y Actus actúa como proveedor que trata esos datos
         por su cuenta y según sus instrucciones.
       </p>
