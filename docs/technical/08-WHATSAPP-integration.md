@@ -155,6 +155,23 @@ mobile). Creates a `User` row directly (`role: OPERATOR`, `clerkUserId: null`,
 (same restriction that already applied to the old email-invite flow — an ADMIN cannot
 access this page).
 
+## Business verification: legal identity on the public sites
+
+Meta's business verification checks that the legal name in the form matches an official
+document, and that the brands the portfolio shows publicly are tied to that name. The
+portfolio (`Mas uno software`) belongs to a sole proprietor under monotributo, so the legal
+name is the person's, not the trade name. The chain is declared in public (2026-10-16):
+
+| Where | What it says |
+|---|---|
+| masuno.io footer (repo `uno-landing`) | "más uno es el nombre comercial de Lucas Miguel Singh · CUIT 20-31223903-6" |
+| actusagent.io footer (`components/landing/Footer.tsx`) | "Actus, un producto de más uno", linking to masuno.io |
+| `/privacidad` §1, `/terminos` intro and §5 | Lucas Miguel Singh (CUIT 20-31223903-6), trade name más uno, as data controller and service provider |
+
+The verification form uses https://masuno.io as the business website. campIA declares the
+same identity (`LEGAL.responsible` in the `agrodata-app` repo). If the legal entity changes
+(e.g. a SAS), update all of these before re-verifying the portfolio.
+
 ## What's explicitly out of scope here
 
 - Meta Business verification (manual, external — legal business documents, 2–10
